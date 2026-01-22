@@ -442,9 +442,15 @@ class CLASSIX:
         https://arxiv.org/abs/2202.01456, 2022.
     """
         
-    def __init__(self, sorting="pca", radius=0.5, minPts=1, group_merging="distance", mergeScale=1.5, 
+    def __init__(self, sorting="pca", metric='euclidean', radius=0.5, minPts=1, group_merging="distance", mergeScale=1.5, 
                  post_alloc=True, mergeTinyGroups=True, verbose=1, short_log_form=True): 
-
+        
+        self.metric = metric.lower()
+        if self.metric not in ['euclidean', 'manhattan', 'tanimoto']:
+            raise ValueError("Only 'euclidean', 'manhattan', and 'tanimoto' are supported now.")
+        
+        if self.metric == 'manhattan' and sorting not in ['sum', 'popcount', None]:
+            sorting = 'sum'  # Manhattan 常用 sum 排序
         self.__verbose = verbose
         self.minPts = int(minPts)
 
@@ -537,48 +543,91 @@ class CLASSIX:
         if data.dtype !=  'float64':
             data = data.astype('float64')
         
-        if self.sorting == "norm-mean":
-            self.mu_ = data.mean(axis=0)
-            self.data = data - self.mu_
-            self.dataScale_ = self.data.std()
-            if self.dataScale_ == 0: # prevent zero-division
-                self.dataScale_ = 1
-            self.data = self.data / self.dataScale_
-        
-        elif self.sorting == "pca":
-            self.mu_ = data.mean(axis=0)
-            self.data = data - self.mu_ # mean center
-            rds = norm(self.data, axis=1) # distance of each data point from 0
-            self.dataScale_ = np.median(rds) # 50% of data points are within that radius
-            if self.dataScale_ == 0: # prevent zero-division
-                self.dataScale_ = 1
-            self.data = self.data / self.dataScale_ # now 50% of data are in unit ball 
+        # preprocessing phase
+        if self.metric == 'euclidean':
+            if self.sorting == "norm-mean":
+                self.mu_ = data.mean(axis=0)
+                self.data = data - self.mu_
+                self.dataScale_ = self.data.std()
+                if self.dataScale_ == 0: # prevent zero-division
+                    self.dataScale_ = 1
+                self.data = self.data / self.dataScale_
             
-        elif self.sorting == "norm-orthant":
-            self.mu_ = data.min(axis=0)
+            elif self.sorting == "pca":
+                self.mu_ = data.mean(axis=0)
+                self.data = data - self.mu_ # mean center
+                rds = norm(self.data, axis=1) # distance of each data point from 0
+                self.dataScale_ = np.median(rds) # 50% of data points are within that radius
+                if self.dataScale_ == 0: # prevent zero-division
+                    self.dataScale_ = 1
+                self.data = self.data / self.dataScale_ # now 50% of data are in unit ball 
+                
+            elif self.sorting == "norm-orthant":
+                self.mu_ = data.min(axis=0)
+                self.data = data - self.mu_
+                self.dataScale_ = self.data.std()
+                if self.dataScale_ == 0: # prevent zero-division
+                    self.dataScale_ = 1
+                self.data = self.data / self.dataScale_
+                
+            else:
+                self.mu_, self.dataScale_ = 0, 1 # no preprocessing
+                self.data = (data - self.mu_) / self.dataScale_
+
+        elif self.metric == 'manhattan':
+            # Manhattan 專屬預處理（移到正象限 + sum 標準化）
+            self.mu_ = data.min(0)
             self.data = data - self.mu_
-            self.dataScale_ = self.data.std()
-            if self.dataScale_ == 0: # prevent zero-division
-                self.dataScale_ = 1
-            self.data = self.data / self.dataScale_
+            sort_vals = np.sum(self.data, axis=1)
+            mext = np.median(sort_vals) or 1.0
+            self.data /= mext
+            self.dataScale_ = mext  # 可以視為 scale
+            sort_vals /= mext
             
-        else:
-            self.mu_, self.dataScale_ = 0, 1 # no preprocessing
-            self.data = (data - self.mu_) / self.dataScale_
-        
+        elif self.metric == 'tanimoto':
+            # Tanimoto 無需任何預處理（數據應非負）
+            self.mu_ = np.zeros(data.shape[1])  # 佔位
+            self.dataScale_ = 1.0
+            self.data = data
+
         self.t1_prepare = time() - self.t1_prepare
         self.t2_aggregate = time()
         # aggregation
         
-        self.groups_, self.splist_, self.nrDistComp_, self.ind, sort_vals, self.data, self.__half_nrm2 = self._aggregate(
-                                                                                data=self.data,
-                                                                                sorting=self.sorting, 
-                                                                                tol=self.radius
-                                                                            ) 
+        if self.metric == 'euclidean':
+            self.groups_, self.splist_, self.nrDistComp_, self.ind, sort_vals, self.data, self.__half_nrm2 = self._aggregate(
+                                                                                    data=self.data,
+                                                                                    sorting=self.sorting, 
+                                                                                    tol=self.radius
+                                                                                ) 
             
-        if self.__half_nrm2 is None:
-            self.__half_nrm2 = np.einsum('ij,ij->i', self.data, self.data) * 0.5
+            # if self.__half_nrm2 is None: # deprecated
+            #     self.__half_nrm2 = np.einsum('ij,ij->i', self.data, self.data) * 0.5
+
+        elif self.metric == 'tanimoto':
+            from .aggregation_td import aggregate_tanimoto
+            agg_res = aggregate_tanimoto(self.data, self.radius, verbose=self.__verbose > 0)
+            self.groups_ = agg_res['labels']
+            self.splist_ = agg_res['splist']
+            self.nrDistComp_ = agg_res['nr_dist']
+            self.ind = agg_res['ind']
+            sort_vals = agg_res['sort_vals']
+            self.data = agg_res['data_sorted']
+            self.group_sizes_ = agg_res['group_sizes']
+
+        elif self.metric == 'manhattan':
+            # Manhattan 聚合
+            from .aggregation_md import aggregate_manhattan
+            agg_res = aggregate_manhattan(self.data, self.radius, verbose=self.__verbose > 0)
+            self.groups_ = agg_res['labels']
+            self.splist_ = agg_res['splist']
+            self.nrDistComp_ = agg_res['nr_dist']
+            self.ind = agg_res['ind']
+            sort_vals = agg_res['sort_vals']
+            self.data = agg_res['data_sorted']          # 注意這裡是 sorted 的
+            self.group_sizes_ = agg_res['group_sizes']  # 新增屬性
             
+
         self.splist_ = np.array(self.splist_)
         self.t2_aggregate = time() - self.t2_aggregate
 
@@ -592,15 +641,78 @@ class CLASSIX:
             self.labels_ = np.asarray(self.groups_)[self.inverse_ind]
         
         else:
-            self.labels_ = self.merging(
-                data=self.data,
-                agg_labels=self.groups_, 
-                splist=self.splist_,  
-                ind=self.ind, sort_vals=sort_vals, 
-                radius=self.radius, 
-                method=self.group_merging, 
-                minPts=self.minPts
-            ) 
+            if self.metric == 'euclidean':
+                self.labels_ = self.merging(
+                    data=self.data,
+                    agg_labels=self.groups_, 
+                    splist=self.splist_,  
+                    ind=self.ind, sort_vals=sort_vals, 
+                    radius=self.radius, 
+                    method=self.group_merging, 
+                    minPts=self.minPts
+                ) 
+                
+            elif self.metric == 'manhattan':
+                from .merging_md import merge_manhattan
+                spdata = self.data[self.splist_]                      # group centers
+                sort_vals_sp = sort_vals[self.splist_]
+                agg_labels_sp = np.arange(len(self.splist_))          # 每個 group 初始獨立 label
+                
+                merge_result = merge_manhattan(
+                    spdata=spdata,
+                    group_sizes=self.group_sizes_,                    # 來自 aggregation_md 的 group_sizes
+                    sort_vals_sp=sort_vals_sp,
+                    agg_labels_sp=agg_labels_sp,
+                    radius=self.radius,
+                    mergeScale=self.mergeScale_,
+                    minPts=self.minPts,
+                    mergeTinyGroups=self.__mergeTinyGroups,
+                    verbose=self.__verbose
+                )
+                
+                # 映射回所有點（sorted space）
+                labels_sorted = np.empty_like(self.groups_)
+                unique_groups = np.unique(self.groups_)
+                for g in unique_groups:
+                    cluster_id = merge_result['group_cluster_labels'][g]
+                    labels_sorted[self.groups_ == g] = cluster_id
+                
+                # 還原原始順序
+                self.labels_ = labels_sorted[np.argsort(self.ind)]
+                self.Adj = merge_result['Adj']  # 可選保存，用於 explain/getPath
+                
+                if self.__verbose:
+                    print(f"Manhattan merging completed: {len(np.unique(self.labels_))} clusters")
+
+            elif self.metric == 'tanimoto':
+                from .merging_td import merge_tanimoto
+                spdata = self.data[self.splist_]
+                sort_vals_sp = sort_vals[self.splist_]
+                agg_labels_sp = np.arange(len(self.splist_))
+                
+                merge_result = merge_tanimoto(
+                    spdata=spdata,
+                    group_sizes=self.group_sizes_,
+                    sort_vals_sp=sort_vals_sp,
+                    agg_labels_sp=agg_labels_sp,
+                    radius=self.radius,
+                    mergeScale=self.mergeScale_,
+                    minPts=self.minPts,
+                    mergeTinyGroups=self.__mergeTinyGroups,
+                    verbose=self.__verbose
+                )
+
+                # same with manhattan distance
+                labels_sorted = np.empty_like(self.groups_)
+                unique_groups = np.unique(self.groups_)
+                for g in unique_groups:
+                    cluster_id = merge_result['group_cluster_labels'][g]
+                    labels_sorted[self.groups_ == g] = cluster_id
+                
+                self.labels_ = labels_sorted[np.argsort(self.ind)]
+                self.Adj = merge_result['Adj']
+                if self.__verbose:
+                    print(f"Tanimoto merging completed: {len(np.unique(self.labels_))} clusters")
 
         self.t3_merge = time() - self.t3_merge
         
@@ -2047,7 +2159,7 @@ class CLASSIX:
     def sorting(self, value):
         if not isinstance(value, str) and not isinstance(value, type(None)):
             raise TypeError('Expected a string type')
-        if value not in ['pca', 'norm-mean', 'norm-orthant'] and value != None:
+        if value not in ['pca', 'norm-mean', 'norm-orthant', 'sum', 'popcount'] and value != None:
             raise ValueError(
                 "Please refer to an correct sorting way, namely 'pca', 'norm-mean' and 'norm-orthant'.")
         self._sorting = value
