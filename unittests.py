@@ -1,6 +1,6 @@
 # MIT License
 #
-# Copyright (c) 2024 Stefan Güttel, Xinye Chen
+# Copyright (c) 2026 Stefan Güttel, Xinye Chen
 #
 
 
