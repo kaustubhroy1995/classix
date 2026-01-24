@@ -14,6 +14,17 @@ ext_modules = [
     Extension("classix.merge_ed_cm", ["classix/merge_ed_cm.pyx"]),
     Extension("classix.merge_ed_cm_win", ["classix/merge_ed_cm_win.pyx"]),
     
+    Extension("classix.aggregate_md_cm", ["classix/aggregate_md_cm.pyx"]),
+    Extension("classix.merge_md_cm", ["classix/merge_md_cm.pyx"]),
+    Extension(
+            "classix.aggregate_td_cm",
+            sources=["classix/aggregate_td_cm.pyx"],
+            language="c++",  # This is the critical line
+            include_dirs=[np.get_include()],
+            extra_compile_args=["-O3"]
+        ),
+    Extension("classix.merge_td_cm", ["classix/merge_td_cm.pyx"]),
+
     Extension(
         "spmv",                          # 模組名：import spmv
         sources=["classix/spmv.c"],              #（在項目根目錄或 classix/ 下）

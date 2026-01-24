@@ -16,6 +16,7 @@ import numpy as np
 import pandas as pd
 from numpy.linalg import norm
 from scipy.spatial import distance
+import scipy.sparse as sparse
 from time import time
 
 def cython_is_available(verbose=0):
@@ -613,7 +614,13 @@ class CLASSIX:
                 self.__half_nrm2 = np.einsum('ij,ij->i', self.data, self.data) * 0.5
 
         elif self.metric == 'tanimoto':
-            from .aggregation_td import aggregate_tanimoto
+            # Tanimoto 聚合
+            try:
+                from .aggregate_td_cm import aggregate_tanimoto
+            except (ModuleNotFoundError, ImportError):
+                from .aggregate_td import aggregate_tanimoto
+                warnings.warn("aggregation_td module is required for tanimoto metric, roll back to Python version.")
+        
             agg_res = aggregate_tanimoto(self.data, self.radius, verbose=self.__verbose > 0)
             self.groups_ = agg_res['labels']
             self.splist_ = agg_res['splist']
@@ -625,7 +632,12 @@ class CLASSIX:
 
         elif self.metric == 'manhattan':
             # Manhattan 聚合
-            from .aggregation_md import aggregate_manhattan
+            try:
+                from .aggregate_md_cm import aggregate_manhattan
+            except (ModuleNotFoundError, ImportError):
+                from .aggregate_md import aggregate_manhattan
+                warnings.warn("aggregation_md module is required for manhattan metric, roll back to Python version.")
+
             agg_res = aggregate_manhattan(self.data, self.radius, verbose=self.__verbose > 0)
             self.groups_ = agg_res['labels']
             self.splist_ = agg_res['splist']
@@ -661,7 +673,12 @@ class CLASSIX:
                 ) 
                 
             elif self.metric == 'manhattan':
-                from .merging_md import merge_manhattan
+                try:
+                    from .merge_md_cm import merge_manhattan
+                except (ModuleNotFoundError, ImportError):
+                    from .merge_md import merge_manhattan
+                    warnings.warn("merge_md module is required for manhattan metric, roll back to Python version.")
+
                 spdata = self.data[self.splist_]                      # group centers
                 sort_vals_sp = sort_vals[self.splist_]
                 agg_labels_sp = np.arange(len(self.splist_))          # 每個 group 初始獨立 label
@@ -693,7 +710,12 @@ class CLASSIX:
                     print(f"Manhattan merging completed: {len(np.unique(self.labels_))} clusters")
 
             elif self.metric == 'tanimoto':
-                from .merging_td import merge_tanimoto
+                try:
+                    from .merge_td_cm import merge_tanimoto
+                except (ModuleNotFoundError, ImportError):
+                    from .merge_td import merge_tanimoto
+                    warnings.warn("merge_td module is required for tanimoto metric, roll back to Python version.")
+
                 spdata = self.data[self.splist_]
                 sort_vals_sp = sort_vals[self.splist_]
                 agg_labels_sp = np.arange(len(self.splist_))
