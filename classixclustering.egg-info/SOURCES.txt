@@ -2,7 +2,6 @@ LICENSE
 README.rst
 pyproject.toml
 setup.py
-spmv.c
 classix/__init__.py
 classix/aggregate.py
 classix/aggregate_c.pyx
@@ -15,6 +14,7 @@ classix/merge_cm.pyx
 classix/merge_cm_win.pyx
 classix/merging_md.py
 classix/merging_td.py
+classix/spmv.c
 classixclustering.egg-info/PKG-INFO
 classixclustering.egg-info/SOURCES.txt
 classixclustering.egg-info/dependency_links.txt
