@@ -31,13 +31,13 @@ def cython_is_available(verbose=0):
             import numpy
             
             try: # check if Cython packages are loaded properly
-                from .aggregate_cm import general_aggregate, pca_aggregate
-                from .merge_cm import density_merge, distance_merge
+                from .aggregate_ed_cm import general_aggregate, pca_aggregate
+                from .merge_ed_cm import density_merge, distance_merge
                 # cython with memoryviews
                 # Typed memoryviews allow efficient access to memory buffers, such as those underlying NumPy arrays, without incurring any Python overhead. 
             
             except ModuleNotFoundError:
-                from .aggregate_c import general_aggregate, pca_aggregate
+                from .aggregate_ed_c import general_aggregate, pca_aggregate
                 
                 __cython_type__ =  "trivial"
 
@@ -486,30 +486,30 @@ class CLASSIX:
         if self.__enable_cython__:
             try:
                 try:
-                    from .aggregate_cm import general_aggregate, pca_aggregate, lm_aggregate
+                    from .aggregat_ed_cm import general_aggregate, pca_aggregate, lm_aggregate
                     
                 except ModuleNotFoundError:
-                    from .aggregate_c import general_aggregate, pca_aggregate, lm_aggregate
+                    from .aggregate_ed_c import general_aggregate, pca_aggregate, lm_aggregate
                 
                 self.__enable_aggregate_cython__ = True
 
                 
                 
                 if platform.system() == 'Windows':
-                    from .merge_cm_win import density_merge, distance_merge, distance_merge_mtg
+                    from .merge_ed_cm_win import density_merge, distance_merge, distance_merge_mtg
                 else:
-                    from .merge_cm import density_merge, distance_merge, distance_merge_mtg
+                    from .merge_ed_cm import density_merge, distance_merge, distance_merge_mtg
 
             except (ModuleNotFoundError, ValueError):
                 if not self.__enable_aggregate_cython__:
-                    from .aggregate import general_aggregate, pca_aggregate, lm_aggregate
+                    from .aggregate_ed import general_aggregate, pca_aggregate, lm_aggregate
                 
-                from .merge import density_merge, distance_merge, distance_merge_mtg
+                from .merg_ed import density_merge, distance_merge, distance_merge_mtg
                 warnings.warn("This CLASSIX installation is not using Cython.")
 
         else:
-            from .aggregate import general_aggregate, pca_aggregate, lm_aggregate
-            from .merge import density_merge, distance_merge, distance_merge_mtg
+            from .aggregate_ed import general_aggregate, pca_aggregate, lm_aggregate
+            from .merge_ed import density_merge, distance_merge, distance_merge_mtg
             warnings.warn("This run of CLASSIX is not using Cython.")
 
         

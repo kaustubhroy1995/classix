@@ -1,6 +1,5 @@
 import numpy as np
 from tqdm import tqdm
-from copy import deepcopy
 
 def merge_manhattan(
     spdata,              # group centers (sorted space, shape: n_groups x dim)

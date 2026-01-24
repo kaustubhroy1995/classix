@@ -9,10 +9,10 @@ class CustomBuildExt(build_ext):
         super().run()
 
 ext_modules = [
-    Extension("classix.aggregate_c", ["classix/aggregate_c.pyx"]),
-    Extension("classix.aggregate_cm", ["classix/aggregate_cm.pyx"]),
-    Extension("classix.merge_cm", ["classix/merge_cm.pyx"]),
-    Extension("classix.merge_cm_win", ["classix/merge_cm_win.pyx"]),
+    Extension("classix.aggregate_ed_c", ["classix/aggregate_ed_c.pyx"]),
+    Extension("classix.aggregate_ed_cm", ["classix/aggregate_ed_cm.pyx"]),
+    Extension("classix.merge_ed_cm", ["classix/merge_ed_cm.pyx"]),
+    Extension("classix.merge_ed_cm_win", ["classix/merge_ed_cm_win.pyx"]),
     
     Extension(
         "spmv",                          # 模組名：import spmv

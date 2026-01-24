@@ -12,16 +12,16 @@ import sklearn.datasets as data
 from classix import CLASSIX, loadData, cython_is_available
 from classix.clustering import calculate_cluster_centers
 from classix import preprocessing
-from classix import aggregate, aggregate_c, aggregate_cm
-from classix.merge import distance_merge_mtg, distance_merge, density_merge
+from classix import aggregate_ed, aggregate_ed_c, aggregate_ed_cm
+from classix.merge_ed import distance_merge_mtg, distance_merge, density_merge
 import platform
 
 if platform.system() == 'Windows':
-    from classix.merge_cm_win import distance_merge as distance_merge_cm
-    from classix.merge_cm_win import density_merge as density_merge_cm
+    from classix.merge_ed_cm_win import distance_merge as distance_merge_cm
+    from classix.merge_ed_cm_win import density_merge as density_merge_cm
 else:
-    from classix.merge_cm import distance_merge as distance_merge_cm
-    from classix.merge_cm import density_merge as density_merge_cm
+    from classix.merge_ed_cm import distance_merge as distance_merge_cm
+    from classix.merge_ed_cm import density_merge as density_merge_cm
 
 from sklearn.metrics.cluster import adjusted_rand_score
 
@@ -344,30 +344,30 @@ class TestClassix(unittest.TestCase):
         try:
             data = np.random.randn(10000, 2)
             
-            inverse_ind1, spl1, _, _, _, _, _ = aggregate.general_aggregate(data, sorting="pca", tol=0.5)
-            inverse_ind2, spl2, _, _, _, _, _ = aggregate_cm.general_aggregate(data, sorting="pca", tol=0.5)
-            inverse_ind3, spl3, _, _, _, _, _ = aggregate_c.general_aggregate(data, "pca", 0.5)
-            inverse_ind7, spl7, _, _, _, _, _ = aggregate.pca_aggregate(data, sorting="pca", tol=0.5)
-            inverse_ind8, spl8, _, _, _, _, _ = aggregate_c.pca_aggregate(data, "pca", 0.5)
-            inverse_ind9, spl9, _, _, _, _, _ = aggregate_cm.pca_aggregate(data, "pca", 0.5)
+            inverse_ind1, spl1, _, _, _, _, _ = aggregate_ed.general_aggregate(data, sorting="pca", tol=0.5)
+            inverse_ind2, spl2, _, _, _, _, _ = aggregate_ed_cm.general_aggregate(data, sorting="pca", tol=0.5)
+            inverse_ind3, spl3, _, _, _, _, _ = aggregate_ed_c.general_aggregate(data, "pca", 0.5)
+            inverse_ind7, spl7, _, _, _, _, _ = aggregate_ed.pca_aggregate(data, sorting="pca", tol=0.5)
+            inverse_ind8, spl8, _, _, _, _, _ = aggregate_ed_c.pca_aggregate(data, "pca", 0.5)
+            inverse_ind9, spl9, _, _, _, _, _ = aggregate_ed_cm.pca_aggregate(data, "pca", 0.5)
             
-            _, _, _, _, _, _, _ = aggregate_cm.general_aggregate(data, sorting="norm-mean", tol=0.5)
-            _, _, _, _, _, _, _ = aggregate_c.general_aggregate(data, "norm-mean", 0.5)
+            _, _, _, _, _, _, _ = aggregate_ed_cm.general_aggregate(data, sorting="norm-mean", tol=0.5)
+            _, _, _, _, _, _, _ = aggregate_ed_c.general_aggregate(data, "norm-mean", 0.5)
             
-            _, _, _, _, _, _, _ = aggregate_cm.general_aggregate(data, sorting="NA", tol=0.5)
-            _, _, _, _, _, _, _ = aggregate_c.general_aggregate(data, "NA", 0.5)
+            _, _, _, _, _, _, _ = aggregate_ed_cm.general_aggregate(data, sorting="NA", tol=0.5)
+            _, _, _, _, _, _, _ = aggregate_ed_c.general_aggregate(data, "NA", 0.5)
 
-            inverse_ind1, spl1, _, _, _, _, _ = aggregate.lm_aggregate(data, sorting="pca", tol=0.5)
-            inverse_ind2, spl2, _, _, _, _, _ = aggregate_cm.lm_aggregate(data, sorting="pca", tol=0.5)
-            inverse_ind3, spl3, _, _, _, _, _ = aggregate_c.lm_aggregate(data, "pca", 0.5)
+            inverse_ind1, spl1, _, _, _, _, _ = aggregate_ed.lm_aggregate(data, sorting="pca", tol=0.5)
+            inverse_ind2, spl2, _, _, _, _, _ = aggregate_ed_cm.lm_aggregate(data, sorting="pca", tol=0.5)
+            inverse_ind3, spl3, _, _, _, _, _ = aggregate_ed_c.lm_aggregate(data, "pca", 0.5)
             
-            _, _, _, _, _, _, _ = aggregate.lm_aggregate(data, sorting="norm-mean", tol=0.5)
-            _, _, _, _, _, _, _ = aggregate_cm.lm_aggregate(data, sorting="norm-mean", tol=0.5)
-            _, _, _, _, _, _, _ = aggregate_c.lm_aggregate(data, "norm-mean", 0.5)
+            _, _, _, _, _, _, _ = aggregate_ed.lm_aggregate(data, sorting="norm-mean", tol=0.5)
+            _, _, _, _, _, _, _ = aggregate_ed_cm.lm_aggregate(data, sorting="norm-mean", tol=0.5)
+            _, _, _, _, _, _, _ = aggregate_ed_c.lm_aggregate(data, "norm-mean", 0.5)
             
-            _, _, _, _, _, _, _ = aggregate.lm_aggregate(data, sorting="NA", tol=0.5)
-            _, _, _, _, _, _, _ = aggregate_cm.lm_aggregate(data, sorting="NA", tol=0.5)
-            _, _, _, _, _, _, _ = aggregate_c.lm_aggregate(data, "NA", 0.5)
+            _, _, _, _, _, _, _ = aggregate_ed.lm_aggregate(data, sorting="NA", tol=0.5)
+            _, _, _, _, _, _, _ = aggregate_ed_cm.lm_aggregate(data, sorting="NA", tol=0.5)
+            _, _, _, _, _, _, _ = aggregate_ed_c.lm_aggregate(data, "NA", 0.5)
             
             if np.sum(inverse_ind1 != inverse_ind2) != 0:
                 checkpoint = 0
@@ -401,7 +401,7 @@ class TestClassix(unittest.TestCase):
         data = np.random.randn(10000, 2)
         checkpoint = 1
         try:    
-            labels, splist, nr_dist, ind, sort_vals, data, half_nrm2 = aggregate.general_aggregate(data, sorting="pca", tol=0.5) #
+            labels, splist, nr_dist, ind, sort_vals, data, half_nrm2 = aggregate_ed.general_aggregate(data, sorting="pca", tol=0.5) #
             splist = np.asarray(splist)
             
             radius = 0.5

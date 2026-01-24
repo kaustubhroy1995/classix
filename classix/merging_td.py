@@ -1,6 +1,5 @@
 import numpy as np
 from tqdm import tqdm
-from copy import deepcopy
 import scipy.sparse as sparse
 from spmv import spsubmatxvec  # Sparse submatrix-vector multiplication (C extension)
 
