@@ -314,127 +314,136 @@ class NotFittedError(ValueError, AttributeError):
 class CLASSIX:
     """CLASSIX: Fast and explainable clustering based on sorting.
     
-    The main parameters are ``radius`` and ``minPts``.
+    The main parameters are``radius``.
+
     
     Parameters
     ----------
-    sorting : str, {'pca', 'norm-mean', 'norm-orthant', None}，default='pca'
-        Sorting method used for the aggregation phase.
+    metric : str, {'euclidean', 'manhattan', 'tanimoto'}, default='euclidean'
+        Distance metric used for the entire clustering process (aggregation and merging).
         
-        - 'pca': sort data points by their first principal component
+        - 'euclidean': Standard Euclidean (L2) distance. Supports all sorting options 
+          ('pca', 'norm-mean', 'norm-orthant', None) and corresponding preprocessing 
+          (mean centering, PCA-based scaling, or orthant shift).
         
-        - 'norm-mean': shift data to have zero mean and then sort by 2-norm values
+        - 'manhattan': Manhattan (L1) distance. Automatically uses sum-based sorting 
+          (sorting='sum') with shift to the non-negative orthant and median-sum scaling. 
+          Other sorting options are ignored.
         
-        - 'norm-orthant': shift data to positive orthant and then sort by 2-norm values
-        
-        - None: aggregate the raw data without any sorting
+        - 'tanimoto': Tanimoto distance (1 - Tanimoto similarity), suitable for binary 
+          or count data. No sorting or additional preprocessing is applied (data should 
+          be non-negative). Sorting parameter is ignored.
 
+    sorting : str, {'pca', 'norm-mean', 'norm-orthant', 'sum', None}, default='pca'
+        Sorting method used for the aggregation phase (only fully effective with 
+        metric='euclidean').
         
+        - 'pca': sort data points by their first principal component.
+        
+        - 'norm-mean': shift data to zero mean and sort by L2-norm.
+        
+        - 'norm-orthant': shift data to positive orthant and sort by L2-norm.
+        
+        - 'sum': sort by the sum of feature values (automatically used for 'manhattan').
+        
+        - None: aggregate the raw data without sorting.
+
     radius : float, default=0.5
-        Tolerance to control the aggregation. If the distance between a group center 
-        and an object is less than or equal to the tolerance, the object will be allocated 
-        to the group which the group center belongs to. For details, we refer to [1].
+        Tolerance controlling aggregation. An object is allocated to a group if its 
+        distance to the group center (starting point) is ≤ radius. The exact distance 
+        measure depends on the chosen ``metric``.
 
-    
     group_merging : str, {'density', 'distance', None}, default='distance'
-        The method for the merging of groups. 
+        Method for merging aggregation groups into final clusters.
         
-        - 'distance': two groups are merged if the distance of their group centers is at 
-           most mergeScale*radius (the parameter above). 
-
-        - 'density': two groups are merged if the density of data points in their intersection 
-           is at least as high the smaller density of both groups. This option uses a disjoint 
-           set structure for the merging.
+        - 'distance': merge groups if the distance between their centers is at most 
+          ``mergeScale * radius`` (distance metric follows ``metric``).
         
-        If group_merging is set to None, the method will return the labels formed by aggregation 
-        as the cluster labels.
+        - 'density': merge based on intersection density (currently only supported 
+          for 'euclidean').
+        
+        - None: skip merging; return aggregation groups as clusters.
 
-    
     minPts : int, default=1
-        Clusters with fewer than minPts points are classified as abnormal clusters.  
-        The data points in an abnormal cluster will be redistributed to the nearest normal cluster. 
-        When set to 1, no redistribution is performed. 
+        Minimum cluster size. Clusters with fewer than minPts points are dissolved, 
+        and their points are reassigned to the nearest valid cluster. Set to 1 to 
+        disable reassignment.
 
-    mergeScale : float
-        Used with distance-clustering; when distance between the two group centers 
-        associated with two distinct groups smaller than mergeScale*radius, 
-        then the two groups merge.
+    mergeScale : float, default=1.5
+        Scaling factor for distance-based merging. Groups are merged if their center 
+        distance ≤ mergeScale * radius (only used when group_merging='distance').
 
-    post_alloc : boolean, default=True
-        Whether to allocate outliers to the closest groups, hence the corresponding clusters. 
-        If False, all outliers will be labeled as -1.
+    post_alloc : bool, default=True
+        If True, outliers (points not assigned during aggregation) are allocated to 
+        the nearest cluster. If False, they are labeled as -1.
 
-    mergeTinyGroups : boolean, default=True
-        If this is False, the group merging will ignore all groups with < minPts points.
-    
-    verbose : boolean or int, default=1
-        Whether to print the logs or not.
- 
-    short_log_form : boolean, default=True
-        Whether or not to use short log form to truncate the clusters list. 
-        
-              
+    mergeTinyGroups : bool, default=True
+        If False, groups smaller than minPts are ignored during distance-based merging.
+
+    verbose : bool or int, default=1
+        Controls logging output. Set to 0 for silent mode.
+
+    short_log_form : bool, default=True
+        If True, truncate long cluster size lists in logs (show only the 20 largest).
+
+
     Attributes
     ----------
     groups_ : numpy.ndarray
-        Groups labels of aggregation.
-    
+        Aggregation group labels (in sorted order).
+
     splist_ : numpy.ndarray
-        List of group centers formed in the aggregation.
-        
+        Indices of group starting points (centers) in the sorted data.
+
     labels_ : numpy.ndarray
-        Clustering class labels for data objects 
+        Final cluster labels for the data (in original order).
 
     group_outliers_ : numpy.ndarray
-        Indices of outliers (aggregation groups level), 
-        i.e., indices of abnormal groups within the clusters with fewer 
-        data points than minPts points.
-        
+        Indices of small aggregation groups dissolved during minPts processing.
+
     clusterSizes_ : array
-        The cardinality of each cluster.
+        Sizes of the final clusters (sorted by label).
 
     groupCenters_ : array
-        The indices for starting point corresponding to original data order.
-    
-    nrDistComp_ : float
-        The number of distance computations.
-    
+        Original-data indices of group starting points.
+
+    nrDistComp_ : int
+        Number of distance computations performed.
+
     dataScale_ : float
-        The value of data scaling.
+        Scaling factor applied during preprocessing (metric-dependent).
 
-    
+
     Methods
-    ----------
-    fit(data):
-        Cluster data while the parameters of the model will be saved. The labels can be extracted by calling ``self.labels_``.
-        
-    fit_transform(data):
-        Cluster data and return labels. The labels can also be extracted by calling ``self.labels_``.
-        
-    predict(data):
-        After clustering the in-sample data, predict the out-sample data.
-        Data will be allocated to the clusters with the nearest starting point in the stage of aggregation. Default values.
+    -------
+    fit(data)
+        Fit the model to data and store clustering results.
 
-    gcIndices(ids):
-        Return the group center (i.e., starting point) location in the data.
-        
-    explain(index1, index2, ...): 
-        Explain the computed clustering. 
-        The indices index1 and index2 are optional parameters (int) corresponding to the 
-        indices of the data points. 
-        
-    load_group_centers(self):
-        Load group centers.
-    
-    load_cluster_centers(self):
-        Load cluster centers.
-    
-    getPath(index1, index2, include_dist=False):
-        Return the indices of connected data points between index1 data and index2 data.
-        
-    preprocessing(data):
-        Normalize the data according to the fitted model.
+    fit_transform(data)
+        Fit and return cluster labels.
 
+    predict(data)
+        Assign new data points to existing clusters using nearest group center.
+
+    gcIndices(ids)
+        Convert group IDs to original data indices of starting points.
+
+    explain(index1=None, index2=None, plot=False)
+        Provide human-readable explanation of clustering or why two points are connected.
+
+    load_group_centers()
+        Compute and return aggregation group centers.
+
+    load_cluster_centers()
+        Compute and return final cluster centers.
+
+    getPath(index1, index2, include_dist=False)
+        Return connecting path of indices between two points in the same cluster.
+
+    preprocessing(data)
+        Apply the fitted model's preprocessing to new data.
+
+        
     References
     ----------
     [1] X. Chen and S. Güttel. Fast and explainable clustering based on sorting, 
@@ -641,8 +650,6 @@ class CLASSIX:
         
         else:
             if self.metric == 'euclidean':
-                print("euclidean distance:", self.splist_)
-                print("half_2:", self.__half_nrm2)
                 self.labels_ = self.merging(
                     data=self.data,
                     agg_labels=self.groups_, 
@@ -739,9 +746,10 @@ class CLASSIX:
         """
         
         return self.fit(data).labels_
+
+    
         
-        
-    def predict(self, data):
+    def predict(self, data): # This method only consistent when the clustering is well-separated / correctly clustered
         """
         Allocate new data points to their nearest clusters.
         
@@ -749,14 +757,12 @@ class CLASSIX:
         ----------
         data : numpy.ndarray
             The ndarray-like input of shape (n_samples, n_features)
-
+    
         Returns
         -------
         labels : numpy.ndarray
             The predicted clustering labels.
         """
-        from scipy import sparse
-        
         if not hasattr(self, '__fit__'):
             raise NotFittedError("Please use .fit() method first.")
         
@@ -778,54 +784,60 @@ class CLASSIX:
         
         # Preprocess new data according to the fitted metric
         if self.metric == 'euclidean':
-            processed_data = self.preprocessing(data)  # Use original scaling (mu_, dataScale_)
-            group_centers = self.data[self.splist_[:, 0].astype(int)]  # Scaled group centers
-            
-            # Euclidean distance
+            processed_data = self.preprocessing(data)
+            # Euclidean splist_ is 2D, use first column
+            sp_indices = self.splist_[:, 0].astype(int)
+            group_centers = self.data[sp_indices]
             dists = distance.cdist(group_centers, processed_data, metric='euclidean')
         
         elif self.metric == 'manhattan':
-            # Manhattan preprocessing (shift to non-negative + scale by median sum)
+            # Manhattan preprocessing
             mu_new = data.min(axis=0)
             processed_data = data - mu_new
             sort_vals_new = np.sum(processed_data, axis=1)
             mext_new = np.median(sort_vals_new) or 1.0
             processed_data /= mext_new
             
-            # Group centers in the same scaled space (from fit)
-            group_centers = self.data[self.splist_]  # Already scaled and sorted space centers
-            
-            # L1 distance
-            dists = distance.cdist(group_centers, processed_data, metric='cityblock')  # cityblock = L1
+            # splist_ is 1D for manhattan
+            group_centers = self.data[self.splist_]
+            dists = distance.cdist(group_centers, processed_data, metric='cityblock')
         
         elif self.metric == 'tanimoto':
-            # Tanimoto: no preprocessing (assume data non-negative, same as fit)
+            # No preprocessing for tanimoto
             processed_data = data
             
-            # Group centers (dense, from fit)
             group_centers_dense = self.data[self.splist_]
-            
-            # Convert to sparse for efficient inner product
             group_centers_sparse = sparse.csr_matrix(group_centers_dense)
             new_data_sparse = sparse.csr_matrix(processed_data)
             
-            # Compute Tanimoto distance matrix
-            ips_groups = group_centers_sparse.dot(new_data_sparse.T).toarray()  # Inner products
+            ips_groups = group_centers_sparse.dot(new_data_sparse.T).toarray()
             sum_groups = np.sum(group_centers_dense, axis=1, keepdims=True)
-            sum_new = np.sum(processed_data, axis=1, keepdims=True)
-            denom = sum_groups + sum_new.T - ips_groups
-            tanimoto_sim = ips_groups / denom
-            dists = 1 - tanimoto_sim  # Tanimoto distance
+            sum_new = np.sum(processed_data, axis=1, keepdims=True).T
+            denom = sum_groups + sum_new - ips_groups
+            tanimoto_sim = ips_groups / np.where(denom == 0, 1e-12, denom)  # Avoid division by zero
+            dists = 1 - tanimoto_sim
         
         else:
             raise ValueError(f"Unsupported metric: {self.metric}")
         
-        # Assign to nearest group center, then map to cluster label
+        # Find nearest group center
         nearest_group_idx = np.argmin(dists, axis=0)
+        
+        # Map nearest group index to its aggregation group label, then to cluster label
         for i in range(n_new):
-            group_id = nearest_group_idx[i]
-            original_group_label = np.unique(self.groups_[self.splist_ == group_id])[0]  # Map back to aggregation group
-            labels[i] = self.label_change.get(original_group_label, -1)  # -1 for potential outliers
+            group_idx = nearest_group_idx[i]
+            
+            # Unified way to get starting point position in sorted data
+            if self.splist_.ndim == 2:  # Euclidean case
+                sp_pos = self.splist_[group_idx, 0]
+            else:  # Manhattan / Tanimoto case (1D)
+                sp_pos = self.splist_[group_idx]
+            
+            # Aggregation group label at the starting point
+            agg_group_label = self.groups_[sp_pos]
+            
+            # Map to final cluster label
+            labels[i] = self.label_change.get(agg_group_label, -1)  # -1 if not found (rare)
         
         return labels
         
