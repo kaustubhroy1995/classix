@@ -25,7 +25,7 @@ jobs:
         pip install setuptools 
         pip install .
         python setup.py build_ext --inplace
-        pytest unittests.py --cov=classix
+        pytest tests/unittests.py --cov=classix
         coverage xml
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v2
