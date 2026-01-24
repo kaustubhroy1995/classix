@@ -7,7 +7,6 @@ static PyObject* spsubmatxvec(PyObject* self, PyObject* args) {
     PyArrayObject *v_data_arr, *result_arr;
     int start_row, end_row;
 
-    // 解析參數：7 個 numpy array + 2 個 int
     if (!PyArg_ParseTuple(args, "O!O!O!iiO!O!",
                           &PyArray_Type, &m_data_arr,
                           &PyArray_Type, &m_indptr_arr,
@@ -18,7 +17,6 @@ static PyObject* spsubmatxvec(PyObject* self, PyObject* args) {
         return NULL;
     }
 
-    // 檢查類型與維度（安全）
     if (PyArray_TYPE(m_data_arr) != NPY_DOUBLE || PyArray_NDIM(m_data_arr) != 1 ||
         PyArray_TYPE(m_indptr_arr) != NPY_INT32 || PyArray_NDIM(m_indptr_arr) != 1 ||
         PyArray_TYPE(m_indices_arr) != NPY_INT32 || PyArray_NDIM(m_indices_arr) != 1 ||
@@ -34,7 +32,6 @@ static PyObject* spsubmatxvec(PyObject* self, PyObject* args) {
     double *v_data = (double*)PyArray_DATA(v_data_arr);
     double *result = (double*)PyArray_DATA(result_arr);
 
-    // 核心計算
     for (int i = start_row; i < end_row; i++) {
         int row_start = m_indptr[i];
         int row_end = m_indptr[i + 1];
@@ -56,7 +53,7 @@ static PyMethodDef SpmvMethods[] = {
 
 static struct PyModuleDef spmvmodule = {
     PyModuleDef_HEAD_INIT,
-    "spmv",   // 模組名
+    "spmv",   
     NULL,
     -1,
     SpmvMethods

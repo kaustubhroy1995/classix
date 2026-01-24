@@ -101,7 +101,6 @@ def merge_tanimoto(
 
     # PHASE 2: minPts redistribution
     # -------------------------------------------------------------------------
-    # Renumber clusters contiguously to calculate sizes accurately
     unique_labels, inverse_indices = np.unique(np.asarray(label_sp), return_inverse=True)
     cdef int[:] current_labels = inverse_indices.astype(np.int32)
     cdef int n_clusters = len(unique_labels)
