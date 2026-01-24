@@ -311,7 +311,6 @@ class NotFittedError(ValueError, AttributeError):
         
         
 
-# ******************************************** the main wrapper ********************************************
 class CLASSIX:
     """CLASSIX: Fast and explainable clustering based on sorting.
     
@@ -624,8 +623,8 @@ class CLASSIX:
             self.nrDistComp_ = agg_res['nr_dist']
             self.ind = agg_res['ind']
             sort_vals = agg_res['sort_vals']
-            self.data = agg_res['data_sorted']          # 注意這裡是 sorted 的
-            self.group_sizes_ = agg_res['group_sizes']  # 新增屬性
+            self.data = agg_res['data_sorted']          # this is sorted 
+            self.group_sizes_ = agg_res['group_sizes']  # new property for manhattan
             
 
         self.splist_ = np.array(self.splist_)
@@ -742,36 +741,92 @@ class CLASSIX:
         
     def predict(self, data):
         """
-        Allocate the data to their nearest clusters.
+        Allocate new data points to their nearest clusters.
         
-        - data : numpy.ndarray
-            The ndarray-like input of shape (n_samples,)
+        Parameters
+        ----------
+        data : numpy.ndarray
+            The ndarray-like input of shape (n_samples, n_features)
 
         Returns
         -------
         labels : numpy.ndarray
             The predicted clustering labels.
         """
+        from scipy import sparse
         
-        if hasattr(self, '__fit__'):
-            if not hasattr(self, 'label_change'):
-                if not hasattr(self, 'inverse_ind'):
-                    self.inverse_ind = np.argsort(self.ind)
-                groups = np.asarray(self.groups_)    
-                self.label_change = dict(zip(groups[self.inverse_ind], self.labels_)) 
-        else:
+        if not hasattr(self, '__fit__'):
             raise NotFittedError("Please use .fit() method first.")
-            
-        labels = list()
-        data = self.preprocessing(np.asarray(data))
-        indices = self.splist_[:,0].astype(int)
-        splist = self.data[indices]
         
-        splabels = np.argmin(distance.cdist(splist, data), axis=0)
-        labels = [self.label_change[i] for i in splabels]
-
-        return np.asarray(labels)
-    
+        # Lazy build label_change mapping (group id -> cluster label)
+        if not hasattr(self, 'label_change'):
+            if not hasattr(self, 'inverse_ind'):
+                self.inverse_ind = np.argsort(self.ind)
+            groups = np.asarray(self.groups_)
+            self.label_change = dict(zip(groups[self.inverse_ind], self.labels_))
+        
+        data = np.asarray(data)
+        if data.ndim == 1:
+            data = data.reshape(-1, 1)
+        if data.dtype != 'float64':
+            data = data.astype('float64')
+        
+        n_new = data.shape[0]
+        labels = np.zeros(n_new, dtype=int)
+        
+        # Preprocess new data according to the fitted metric
+        if self.metric == 'euclidean':
+            processed_data = self.preprocessing(data)  # Use original scaling (mu_, dataScale_)
+            group_centers = self.data[self.splist_[:, 0].astype(int)]  # Scaled group centers
+            
+            # Euclidean distance
+            dists = distance.cdist(group_centers, processed_data, metric='euclidean')
+        
+        elif self.metric == 'manhattan':
+            # Manhattan preprocessing (shift to non-negative + scale by median sum)
+            mu_new = data.min(axis=0)
+            processed_data = data - mu_new
+            sort_vals_new = np.sum(processed_data, axis=1)
+            mext_new = np.median(sort_vals_new) or 1.0
+            processed_data /= mext_new
+            
+            # Group centers in the same scaled space (from fit)
+            group_centers = self.data[self.splist_]  # Already scaled and sorted space centers
+            
+            # L1 distance
+            dists = distance.cdist(group_centers, processed_data, metric='cityblock')  # cityblock = L1
+        
+        elif self.metric == 'tanimoto':
+            # Tanimoto: no preprocessing (assume data non-negative, same as fit)
+            processed_data = data
+            
+            # Group centers (dense, from fit)
+            group_centers_dense = self.data[self.splist_]
+            
+            # Convert to sparse for efficient inner product
+            group_centers_sparse = sparse.csr_matrix(group_centers_dense)
+            new_data_sparse = sparse.csr_matrix(processed_data)
+            
+            # Compute Tanimoto distance matrix
+            ips_groups = group_centers_sparse.dot(new_data_sparse.T).toarray()  # Inner products
+            sum_groups = np.sum(group_centers_dense, axis=1, keepdims=True)
+            sum_new = np.sum(processed_data, axis=1, keepdims=True)
+            denom = sum_groups + sum_new.T - ips_groups
+            tanimoto_sim = ips_groups / denom
+            dists = 1 - tanimoto_sim  # Tanimoto distance
+        
+        else:
+            raise ValueError(f"Unsupported metric: {self.metric}")
+        
+        # Assign to nearest group center, then map to cluster label
+        nearest_group_idx = np.argmin(dists, axis=0)
+        for i in range(n_new):
+            group_id = nearest_group_idx[i]
+            original_group_label = np.unique(self.groups_[self.splist_ == group_id])[0]  # Map back to aggregation group
+            labels[i] = self.label_change.get(original_group_label, -1)  # -1 for potential outliers
+        
+        return labels
+        
     
     
     def merging(self, data, agg_labels, splist, ind, sort_vals, radius=0.5, method="distance", minPts=1):
