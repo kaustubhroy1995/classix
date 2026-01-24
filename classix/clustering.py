@@ -600,8 +600,8 @@ class CLASSIX:
                                                                                     tol=self.radius
                                                                                 ) 
             
-            # if self.__half_nrm2 is None: # deprecated
-            #     self.__half_nrm2 = np.einsum('ij,ij->i', self.data, self.data) * 0.5
+            if self.__half_nrm2 is None: # the self.aggregate will return None if certain strategy is applied.
+                self.__half_nrm2 = np.einsum('ij,ij->i', self.data, self.data) * 0.5
 
         elif self.metric == 'tanimoto':
             from .aggregation_td import aggregate_tanimoto
