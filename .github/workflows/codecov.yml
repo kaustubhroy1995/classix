@@ -12,24 +12,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
 
-      - name: Install dependencies
+      - name: Install deps
         run: |
-          rm -rf build
-          rm -rf dist
           pip install -r requirements.txt
-          pip install -U scikit-learn
-          pip install pytest pytest-cov coverage setuptools
-          pip install .
+          pip install pytest pytest-cov coverage
 
       - name: Run tests with coverage
         run: |
-          pytest tests/unittests.py --cov=classix
-          coverage xml
+          export PYTHONPATH=$PWD
+          pytest tests/unittests.py --cov=classix --cov-report=xml
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
