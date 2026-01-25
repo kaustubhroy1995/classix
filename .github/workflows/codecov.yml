@@ -41,11 +41,14 @@ jobs:
         run: |
           pip install -e .
 
-      - name: Run tests with coverage
-        env:
-          CYTHON_TRACE: 1  
+      - name: Run tests and generate coverage
         run: |
-          pytest tests/unittests.py --cov=classix --cov-report=xml
+          python -m coverage run --source=classix -m pytest unittests.py
+          python -m coverage xml -o coverage.xml
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
+        with:
+          files: coverage.xml
+          fail_ci_if_error: true
+          verbose: true
