@@ -246,6 +246,8 @@ All results will be written to the folder ["exps/results"](https://github.com/nl
 Any form of contribution is welcome. We particularly welcome the contribution of new `demos` in the form of Jupyter Notebooks. Feel free to post issues and pull requests if you want to assist in documentation or code. To contribute, please fork the project and pull a request for your changes. We will strive to work through any issues and requests and get your code merged into the main branch. Contributors will be acknowledged in the release notes. 
 
 ## Citation 
+
+If you use the software and the method, cite: 
 ```bibtex
 @article{CG24,
 title = {Fast and explainable clustering based on sorting},
@@ -258,6 +260,18 @@ doi = {https://doi.org/10.1016/j.patcog.2024.110298}
 }
 ```
 
+If you use Tanimoto and Manhatta distances, cite this:
+```bibtex
+@misc{GK26,
+      title={Fast and explainable clustering in the Manhattan and Tanimoto distance}, 
+      author={Stefan Güttel and Kaustubh Roy},
+      year={2026},
+      eprint={2601.08781},
+      archivePrefix={arXiv},
+      primaryClass={cs.LG},
+      url={https://arxiv.org/abs/2601.08781}, 
+}
+```
 ## License
 This project is licensed under the terms of the [MIT license](https://github.com/nla-group/classix/blob/master/LICENSE).
 
@@ -267,6 +281,7 @@ This project is licensed under the terms of the [MIT license](https://github.com
     <img alt="CLASSIX" src="https://raw.githubusercontent.com/nla-group/classix/master/docs/source/images/nla_logo.jpg" width="240" />
   </a>
 </p>
+
 
 
 
