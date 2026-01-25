@@ -2163,7 +2163,7 @@ class CLASSIX:
             raise NotFittedError("Please use .fit() method first.")
             
         if not hasattr(self, 'grp_centers'):
-            self.grp_centers = calculate_cluster_centers(data, self.groups_)
+            self.grp_centers = calculate_cluster_centers(data[self.ind], self.groups_)
             return self.grp_centers
         else:
             return self.grp_centers
