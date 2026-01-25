@@ -64,7 +64,7 @@ data, labels = make_blobs(n_samples=1000, centers=5, n_features=10, random_state
 clx = classix.CLASSIX(radius=0.1, minPts=10, verbose=0)
 clx.fit(data)
 print(clx.labels_) # clustering labels 
-clx.explain(plot=True)
+clx.explain(data=data, plot=True)
 ```
 
 And here is a slightly more practical example using a demo dataframe provided with CLASSIX: 
@@ -74,7 +74,7 @@ import classix
 data, labels = classix.loadData('Covid3MC')
 clx = classix.CLASSIX(radius=0.2, minPts=500, verbose=0)
 clx.fit(data)
-clx.explain(data, plot=True)
+clx.explain(data=data, plot=True)
 ```
 
 You can also cluster out-of-sample data using ``predict()`` after the model is fitted, e.g., `clx.predict(data.iloc[:1000])` 
