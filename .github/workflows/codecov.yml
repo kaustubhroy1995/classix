@@ -16,14 +16,18 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Install deps
+      - name: Install dependencies
         run: |
           pip install -r requirements.txt
-          pip install pytest pytest-cov coverage
+          pip install -U scikit-learn
+          pip install pytest pytest-cov coverage setuptools cython
+
+      - name: Build Cython extensions
+        run: |
+          python setup.py build_ext --inplace
 
       - name: Run tests with coverage
         run: |
-          export PYTHONPATH=$PWD
           pytest tests/unittests.py --cov=classix --cov-report=xml
 
       - name: Upload coverage to Codecov
