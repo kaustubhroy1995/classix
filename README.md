@@ -250,26 +250,26 @@ Any form of contribution is welcome. We particularly welcome the contribution of
 If you use the software and the method, cite: 
 ```bibtex
 @article{CG24,
-title = {Fast and explainable clustering based on sorting},
-author = {Xinye Chen and Stefan Güttel},
-journal = {Pattern Recognition},
-volume = {150},
-pages = {110298},
-year = {2024},
-doi = {https://doi.org/10.1016/j.patcog.2024.110298}
+    title = {Fast and explainable clustering based on sorting},
+    author = {Xinye Chen and Stefan Güttel},
+    journal = {Pattern Recognition},
+    volume = {150},
+    pages = {110298},
+    year = {2024},
+    doi = {https://doi.org/10.1016/j.patcog.2024.110298}
 }
 ```
 
 If you use Tanimoto and Manhatta distances, cite this:
 ```bibtex
 @misc{GK26,
-      title={Fast and explainable clustering in the Manhattan and Tanimoto distance}, 
-      author={Stefan Güttel and Kaustubh Roy},
-      year={2026},
-      eprint={2601.08781},
-      archivePrefix={arXiv},
-      primaryClass={cs.LG},
-      url={https://arxiv.org/abs/2601.08781}, 
+    title={Fast and explainable clustering in the Manhattan and Tanimoto distance}, 
+    author={Stefan Güttel and Kaustubh Roy},
+    year={2026},
+    eprint={2601.08781},
+    archivePrefix={arXiv},
+    primaryClass={cs.LG},
+    url={https://arxiv.org/abs/2601.08781}, 
 }
 ```
 ## License
@@ -281,6 +281,7 @@ This project is licensed under the terms of the [MIT license](https://github.com
     <img alt="CLASSIX" src="https://raw.githubusercontent.com/nla-group/classix/master/docs/source/images/nla_logo.jpg" width="240" />
   </a>
 </p>
+
 
 
 
