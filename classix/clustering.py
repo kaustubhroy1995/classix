@@ -1244,7 +1244,7 @@ class CLASSIX:
                 self.s_pca = np.ones((len(self.splist_), 2))
                 self.s_pca[:, 0] = self.data[self.splist_[:, 0]].reshape(-1) 
                 
-            self.form_starting_point_clusters_table()
+            self.form_starting_point_clusters_table(data=self.data)
             
         if index1 is None and index2 is not None:
             raise ValueError("Please enter a valid value for index1.")
@@ -2000,7 +2000,7 @@ class CLASSIX:
             
         
         
-    def form_starting_point_clusters_table(self, aggregate=False):
+    def form_starting_point_clusters_table(self, data, aggregate=False):
         """form the columns details for group centers and clusters information"""
         
         # won't change the original order of self.splist_
@@ -2024,7 +2024,7 @@ class CLASSIX:
         else:
             for i in self.splist_[:, 0]:
                 fill = ""
-                sp_item = np.around(self.data[int(i), :], 2).tolist()
+                sp_item = np.around(data[int(i), :], 2).tolist()
                 if len(sp_item) <= 5:
                     for j in sp_item:
                         fill = fill + str(j) + " "
