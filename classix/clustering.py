@@ -2057,6 +2057,9 @@ class CLASSIX:
         
         Parameters
         ----------
+        data : numpy.ndarray
+            The original data used for clustering.
+            
         scale : float
             Design for distance-clustering, when distance between the two group centers 
             associated with two distinct groups smaller than scale*radius, then the two groups merge.

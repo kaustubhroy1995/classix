@@ -161,7 +161,7 @@ class TestClassix(unittest.TestCase):
             try:
                 clx = CLASSIX(sorting='pca', radius=TOL, group_merging='distance', verbose=0)
                 clx.fit_transform(X)
-                clx.visualize_linkage(scale=scale, figsize=(8,8), labelsize=24)
+                clx.visualize_linkage(X, scale=scale, figsize=(8,8), labelsize=24)
             except:
                 checkpoint = 0
         self.assertEqual(checkpoint, 1)
@@ -171,7 +171,7 @@ class TestClassix(unittest.TestCase):
             try:
                 clx = CLASSIX(sorting='pca', radius=tol, group_merging='distance', verbose=0)
                 clx.fit_transform(X)
-                clx.visualize_linkage(scale=1.5, figsize=(8,8), labelsize=24, plot_boundary=True)
+                clx.visualize_linkage(X, scale=1.5, figsize=(8,8), labelsize=24, plot_boundary=True)
             except:
                 checkpoint = 0
         self.assertEqual(checkpoint, 1)
@@ -181,7 +181,7 @@ class TestClassix(unittest.TestCase):
             try:
                 clx = CLASSIX(sorting='norm-orthant', radius=TOL, group_merging='distance', verbose=0)
                 clx.fit_transform(X)
-                clx.visualize_linkage(scale=scale, figsize=(8,8), labelsize=24)
+                clx.visualize_linkage(X, scale=scale, figsize=(8,8), labelsize=24)
             except:
                 checkpoint = 0
         self.assertEqual(checkpoint, 1)
@@ -191,7 +191,7 @@ class TestClassix(unittest.TestCase):
             try:
                 clx = CLASSIX(sorting='norm-orthant', radius=tol, group_merging='distance', verbose=0)
                 clx.fit_transform(X)
-                clx.visualize_linkage(scale=1.5, figsize=(8,8), labelsize=24, plot_boundary=True)
+                clx.visualize_linkage(X, scale=1.5, figsize=(8,8), labelsize=24, plot_boundary=True)
             except:
                 checkpoint = 0
         self.assertEqual(checkpoint, 1)
@@ -201,7 +201,7 @@ class TestClassix(unittest.TestCase):
             try:
                 clx = CLASSIX(sorting='norm-mean', radius=TOL, group_merging='distance', verbose=0)
                 clx.fit_transform(X)
-                clx.visualize_linkage(scale=scale, figsize=(8,8), labelsize=24)
+                clx.visualize_linkage(X, scale=scale, figsize=(8,8), labelsize=24)
             except:
                 checkpoint = 0
         self.assertEqual(checkpoint, 1)
@@ -211,7 +211,7 @@ class TestClassix(unittest.TestCase):
             try:
                 clx = CLASSIX(sorting='norm-mean', radius=tol, group_merging='distance', verbose=0)
                 clx.fit_transform(X)
-                clx.visualize_linkage(scale=1.5, figsize=(8,8), labelsize=24, plot_boundary=True)
+                clx.visualize_linkage(X, scale=1.5, figsize=(8,8), labelsize=24, plot_boundary=True)
             except:
                 checkpoint = 0
         self.assertEqual(checkpoint, 1)

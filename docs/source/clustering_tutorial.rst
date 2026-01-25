@@ -177,7 +177,7 @@ We now have a global view of it:
     clx = CLASSIX(sorting='pca', group_merging='distance', radius=0.1, verbose=1, minPts=99)
     clx.fit(X)
 
-    clx.explain(plot=True, savefig=True, figsize=(10,10))
+    clx.explain(data=X, plot=True, savefig=True, figsize=(10,10))
 
 
 
@@ -212,7 +212,7 @@ Following the previous steps, we can analyze the specific data by referring to t
 
 .. code:: python
 
-    clx.explain(73, plot=True)
+    clx.explain(X, 73, plot=True)
 
 
 Output:
@@ -233,7 +233,7 @@ Example to show two objects in different clusters:
 
 .. code:: python
     
-    clx.explain(773,2,  plot=True)
+    clx.explain(X, 773,2,  plot=True)
 
 .. parsed-literal::
 
@@ -247,7 +247,7 @@ Example to show two objects in the same clusters:
 
 .. code:: python
     
-    clx.explain(773, 792,  plot=True, savefig=True, fmt='png', figname='ex2')
+    clx.explain(X, 773, 792,  plot=True, savefig=True, fmt='png', figname='ex2')
 
 .. parsed-literal::
     
@@ -351,7 +351,7 @@ As above, we view the whole picture for data simply by
 
 .. code:: python
 
-    clx.explain(plot=True, showalldata=True)
+    clx.explain(data, plot=True, showalldata=True)
 
 To speed up the visualization, the default setting for CLASSIX is to show less than 1e5 points, if the number of data points surpasses the value, CLASSIX will randomly select 1e5 data points for the plot. If you want to show all data in the plot, set ``showalldata=True``, which is shown as above. 
 You can also specify other parameters to personalize the visualization to make it easier to analyze. For example, you can enlarge the fontsize of starting points labels by 
@@ -359,7 +359,7 @@ setting ``sp_fontsize`` larger or change the shape by tuning appropriate value f
 
 .. code:: python
 
-    clx.explain(plot=True, figsize=(24,10), sp_fontsize=12)
+    clx.explain(data, plot=True, figsize=(24,10), sp_fontsize=12)
 
 .. image:: images/case_explain_viz.png
 
@@ -376,7 +376,7 @@ Then to track or compare any data by indexing, you can enter like
 
 .. code:: python
 
-    clx.explain(14940, 16943,  plot=True, sp_fontsize=10)
+    clx.explain(data, 14940, 16943,  plot=True, sp_fontsize=10)
 
 .. image:: images/None14940_16943.png
 
@@ -391,7 +391,7 @@ The output documentation describes how two data objects are separated into two c
 
 .. code:: python
 
-    clx.explain(16943, 17143,  plot=True, sp_fontsize=10, fmt='png')
+    clx.explain(data, 16943, 17143,  plot=True, sp_fontsize=10, fmt='png')
 
 .. image:: images/None16943_17143.png
 

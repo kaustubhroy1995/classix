@@ -80,7 +80,7 @@ Calling CLASSIX is straightforward. We don't even need to convert the MATLAB arr
     plot(X(:,1),X(:,2),"*",MarkerSize=5);
     clx = py.classix.CLASSIX(radius=0.3, verbose=0);
     clx = clx.fit(X);
-    clx.explain(plot=false);
+    clx.explain(X, plot=false);
 
 
 
@@ -104,7 +104,7 @@ A key feature of CLASSIX is that it can provide textual explanations of the comp
 
 .. code:: matlab
 
-    clx.explain(plot=true)
+    clx.explain(X, plot=true)
 
 ``explain()`` method requires MATLAB TCL installed, this is explained on MATLAB Answers at `Why am I not able to call python Tkinter in MATLAB? - MATLAB Answers - MATLAB Central (mathworks.com) <https://uk.mathworks.com/matlabcentral/answers/808595-why-am-i-not-able-to-call-python-tkinter-in-matlab?s_tid=srchtitle>`_. We need to provide paths to TCL.
 
@@ -114,7 +114,7 @@ To setup the enviroment, use:
 
     setenv('TCL_LIBRARY', 'C:\Program Files\Python311\tcl\tcl8.6')
     setenv('TK_LIBRARY', 'C:\Program Files\Python311\tcl\tk8.6')
-    clx.explain(plot=true)
+    clx.explain(X, plot=true)
 
 
 .. admonition:: Note
