@@ -686,15 +686,11 @@ class CLASSIX:
                     from .merge_md import merge_manhattan
                     warnings.warn("merge_md module is required for manhattan metric, roll back to Python version.")
                 
-                spdata = self.data[self.splist_]                      
-                sort_vals_sp = sort_vals[self.splist_]
-                agg_labels_sp = np.arange(len(self.splist_))          
-                
                 merge_result = merge_manhattan(
-                    spdata=spdata,
+                    spdata=self.data[self.splist_,:],
                     group_sizes=self.group_sizes_,                    
-                    sort_vals_sp=sort_vals_sp,
-                    agg_labels_sp=agg_labels_sp,
+                    sort_vals_sp=sort_vals[self.splist_],
+                    agg_labels_sp=np.arange(len(self.splist_)),
                     radius=self.radius,
                     mergeScale=self.mergeScale_,
                     minPts=self.minPts,
@@ -720,15 +716,11 @@ class CLASSIX:
                     from .merge_td import merge_tanimoto
                     warnings.warn("merge_td module is required for tanimoto metric, roll back to Python version.")
                 
-                spdata = self.data[self.splist_,:]
-                sort_vals_sp = sort_vals[self.splist_]
-                agg_labels_sp = np.arange(len(self.splist_))
-                
                 merge_result = merge_tanimoto(
-                    spdata=spdata,
+                    spdata=self.data[self.splist_,:],
                     group_sizes=self.group_sizes_,
-                    sort_vals_sp=sort_vals_sp,
-                    agg_labels_sp=agg_labels_sp,
+                    sort_vals_sp=sort_vals[self.splist_],
+                    agg_labels_sp=np.arange(len(self.splist_)),
                     radius=self.radius,
                     mergeScale=self.mergeScale_,
                     minPts=self.minPts,

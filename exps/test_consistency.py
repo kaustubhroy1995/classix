@@ -8,7 +8,7 @@ from classix_tm.classix_m import CLASSIX_M      # Original pure Manhattan versio
 from classix_tm.classix_t import CLASSIX_T      # Original pure Tanimoto version
 
 import classix
-classix.__enable_cython__ = False  # Disable Cython optimizations for testing consistency
+classix.__enable_cython__ = True  # Disable Cython optimizations for testing consistency
 
 def compare_labels(labels1, labels2, name=""):
     """Compare two label arrays for consistency (ignore label numbering, only check partitioning)"""
