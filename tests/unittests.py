@@ -235,7 +235,7 @@ class TestClassix(unittest.TestCase):
 
             clx.explain(data=X, plot=False, showsplist=True, figsize=(10,10),  savefig=True)
             clx.explain(X, 0,  plot=False, savefig=True, showsplist=True)
-            clx.form_starting_point_clusters_table(data=clx.data, aggregate=True)
+            clx.form_starting_point_clusters_table(data=X[clx.ind], aggregate=True)
             clx.explain(X, 3, 2000,  plot=False, savefig=False)
             clx.explain(X, 0, 2008,  plot=False, savefig=True, replace_name=['Superman', 'Batman'])
 
