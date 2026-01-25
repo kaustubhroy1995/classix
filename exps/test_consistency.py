@@ -58,7 +58,8 @@ def run_test(X, metric='manhattan', radius=0.5, minPts=3, mergeScale=1.5, mergeT
     )
     clx_merged.fit(X)
     labels_merged = clx_merged.labels_
-    
+    print("check merged aggregation groups:", clx_merged.groups_[np.argsort(clx_merged.ind)][:10])
+
     # Original pure version
     if metric == 'manhattan':
         clx_original = CLASSIX_M(
@@ -84,6 +85,7 @@ def run_test(X, metric='manhattan', radius=0.5, minPts=3, mergeScale=1.5, mergeT
         raise ValueError("Unsupported metric for testing")
     
     clx_original.fit(X)
+    print("check original aggregation groups:", clx_original.groups_[:10])
     labels_original = clx_original.labels
     
     consistent = compare_labels(labels_merged, labels_original, "Consistency check")

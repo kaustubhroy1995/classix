@@ -1,5 +1,4 @@
 import numpy as np
-from tqdm import tqdm
 import scipy.sparse as sparse
 from spmv import spsubmatxvec  # Sparse submatrix-vector multiplication (C extension)
 
@@ -33,8 +32,7 @@ def merge_tanimoto(
     label_sp = agg_labels_sp.copy()
     
     # Phase 1: Build adjacency + aggressive edge-wise merging
-    pbar = tqdm(range(n_groups), desc="Building adjacency", disable=not verbose)
-    for i in pbar:
+    for i in n_groups:
         if not mergeTinyGroups and group_sizes[i] < minPts:
             continue
         
@@ -98,8 +96,7 @@ def merge_tanimoto(
     
     label_sp_copy = label_sp.copy()
     
-    pbar_small = tqdm(small_clusters, desc="minPts merging", disable=not verbose or len(small_clusters) == 0)
-    for cluster_id in pbar_small:
+    for cluster_id in small_clusters:
         group_ids = np.where(label_sp_copy == cluster_id)[0]
         for gid in group_ids:
             xi = spdata[gid]

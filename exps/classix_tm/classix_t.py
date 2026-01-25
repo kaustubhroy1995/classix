@@ -1,12 +1,12 @@
 import numpy as np
-from tqdm import tqdm
 from copy import deepcopy
 from collections import deque
 import scipy.sparse as sparse
 from spmv import spsubmatxvec
 
 class CLASSIX_T:
-    def __init__(self, sorting="popcount", radius=0.3, minPts=1, group_merging="tanimoto_distance", norm=True, mergeScale=1.4, post_alloc=True, mergeTinyGroups=True, verbose=1, short_log_form=True, use_spmv=True):
+    def __init__(self, sorting="popcount", radius=0.3, minPts=1, group_merging="tanimoto_distance", norm=True, 
+            mergeScale=1.4, post_alloc=True, mergeTinyGroups=True, verbose=1, short_log_form=True, use_spmv=True):
         self.group_merging = group_merging
         self.mergeScale = mergeScale
         self.mergeTinyGroups = mergeTinyGroups
@@ -46,7 +46,7 @@ class CLASSIX_T:
         sort_vals = sort_vals[self.ind] 
         data = data[self.ind,:] 
 
-        print("\nOWN AGGREGATION")
+        # print("\nOWN AGGREGATION")
         lab = 0
 
         self.labels = np.full(n, -1, dtype=int)
@@ -65,7 +65,7 @@ class CLASSIX_T:
         
         
         # Aggregation
-        for i in tqdm(range(n)):
+        for i in range(n):
             if self.labels[i] >= 0:
                 continue
                 
@@ -122,7 +122,7 @@ class CLASSIX_T:
 
             lab += 1
             
-        self.aggregation_labels = deepcopy(self.labels)
+        self.groups_ = deepcopy(self.labels)
         
         # merging
         self.spdata = data[self.splist,:]
@@ -141,7 +141,7 @@ class CLASSIX_T:
         
         minPts = self.minPts
 
-        for i in tqdm(range(len(self.splist))):
+        for i in range(len(self.splist)):
             if not self.mergeTinyGroups and self.group_sizes[i] < minPts:
                 continue
                 
@@ -241,7 +241,7 @@ class CLASSIX_T:
         self.labels = np.array([label_sp[group] if group != -1 else -1 for group in self.labels])
 
         self.labels = self.labels[self.unsort_ind]
-        self.aggregation_labels = self.aggregation_labels[self.unsort_ind]
+        self.groups_ = self.groups_[self.unsort_ind]
         self.group_labels = label_sp
         self.group_centre_pts = self.spdata
         self.group_centers = self.splist

@@ -1,5 +1,4 @@
 import numpy as np
-from tqdm import tqdm
 
 def merge_manhattan(
     spdata,              # group centers (sorted space, shape: n_groups x dim)
@@ -63,8 +62,7 @@ def merge_manhattan(
 
     label_sp_copy = label_sp.copy()
 
-    pbar_small = tqdm(small_clusters, desc="minPts merging", disable=not verbose or len(small_clusters) == 0)
-    for cluster_id in pbar_small:
+    for cluster_id in small_clusters:
         group_ids = np.where(label_sp_copy == cluster_id)[0]
         for gid in group_ids:
             xi = spdata[gid]

@@ -1,10 +1,10 @@
 import numpy as np
-from tqdm import tqdm
 from copy import deepcopy
 from collections import deque
 
 class CLASSIX_M:
-    def __init__(self, sorting="popcount", radius=0.3, minPts=1, group_merging="manhattan_distance", norm=True, mergeScale=1.4, post_alloc=True, mergeTinyGroups=True, verbose=1, short_log_form=True, use_spmv=False):
+    def __init__(self, sorting="popcount", radius=0.3, minPts=1, group_merging="manhattan_distance",
+                 norm=True, mergeScale=1.4, post_alloc=True, mergeTinyGroups=True, verbose=1, short_log_form=True, use_spmv=False):
         self.group_merging = group_merging
         self.mergeScale = mergeScale
         self.mergeTinyGroups = mergeTinyGroups
@@ -20,10 +20,10 @@ class CLASSIX_M:
         self.labels = None
         
     def __str__(self):
-        return f"CLASSIX_T(sorting={self.sorting}, radius={self.radius}, minPts={self.minPts}, group_merging={self.group_merging}, mergeScale={self.mergeScale}, mergeTinyGroups={self.mergeTinyGroups})"
+        return f"CLASSIX_M(sorting={self.sorting}, radius={self.radius}, minPts={self.minPts}, group_merging={self.group_merging}, mergeScale={self.mergeScale}, mergeTinyGroups={self.mergeTinyGroups})"
     
     def __repr__(self):
-        return f"CLASSIX_T(sorting={self.sorting}, radius={self.radius}, minPts={self.minPts}, group_merging={self.group_merging}, mergeScale={self.mergeScale}, mergeTinyGroups={self.mergeTinyGroups})"
+        return f"CLASSIX_M(sorting={self.sorting}, radius={self.radius}, minPts={self.minPts}, group_merging={self.group_merging}, mergeScale={self.mergeScale}, mergeTinyGroups={self.mergeTinyGroups})"
     
     def fit(self, data, r=None, mergeScale=None, minPts=None):
         if r is not None:
@@ -49,7 +49,7 @@ class CLASSIX_M:
         sort_vals = sort_vals[self.ind] 
         data = data[self.ind,:] # sort data
 
-        print("\nOWN AGGREGATION")
+        # print("\nOWN AGGREGATION")
         lab = 0
 
         # labels of the data points. Initially all are -1 to keep track of unallocated points
@@ -62,7 +62,7 @@ class CLASSIX_M:
         self.group_starting_pts = [] # group starting pts in the sorted array
 
         # Aggregation
-        for i in tqdm(range(n)):
+        for i in range(n):
             
             if self.labels[i] >= 0:
                 continue
@@ -90,7 +90,7 @@ class CLASSIX_M:
 
             lab += 1
 
-        self.aggregation_labels = deepcopy(np.array(self.labels))
+        self.groups_ = deepcopy(np.array(self.labels))
         
         # merging
         self.spdata = data[self.splist,:]
@@ -110,7 +110,7 @@ class CLASSIX_M:
         
         minPts = self.minPts
 
-        for i in tqdm(range(len(self.splist))):
+        for i in range(len(self.splist)):
             if not self.mergeTinyGroups:
                 if self.group_sizes[i] < minPts:
                     continue
@@ -156,7 +156,7 @@ class CLASSIX_M:
         print("small clusters", small_clusters)
         labels_sp_copy_2 = deepcopy(label_sp)
 
-        for i in tqdm(small_clusters):
+        for i in small_clusters:
             ii = np.where(labels_sp_copy_2==i)[0]
             for iii in ii:
                 xi = self.spdata[iii, :]
@@ -196,55 +196,11 @@ class CLASSIX_M:
             self.labels[idx] = label_sp[label]
 
         self.labels = self.labels[self.unsort_ind]
-        self.aggregation_labels = self.aggregation_labels[self.unsort_ind]
+        self.groups_ = self.groups_[self.unsort_ind]
         self.group_labels = label_sp
         self.group_centre_pts = self.spdata
         self.group_centers = self.splist
         return self
-
-    def explain(self, ind1=None, ind2=None):
-        if ind1 is None and ind2 is None:
-            # If there are no specific points to explain, print the general information
-            print(f"The data was clustered into {len(self.group_labels)} groups. These were further merged into {len(np.unique(self.group_labels))} clusters.")
-
-        if ind1 is not None and ind2 is None:
-            # If only one index is provided, print the cluster information for that index
-            print(f"The data point at index {ind1} was assigned to cluster {self.labels[ind1]}")
-
-        if ind1 is not None and ind2 is not None:
-            # If two indices are provided, print the cluster information
-            if self.labels[ind1] == self.labels[ind2]:
-                # If the two data points belong to the same cluster, check if they are in the same group
-                print(f"The data points at indices {ind1} and {ind2} belong to the same cluster.")
-                agg_label_1 = self.aggregation_labels[ind1]
-                agg_label_2 = self.aggregation_labels[ind2]
-                if agg_label_1 == agg_label_2:
-                    # If the two data points are in the same group, print the information
-                    print(f"The data points at indices {ind1} and {ind2} are in the same group {agg_label_1}.")
-                    return None
-
-                else:
-                    # If the two data points are in different groups, find the shortest connection path between the two groups
-                    print(f"The data points at indices {ind1} and {ind2} are in different groups.")
-                    connected_path = self.bfs_shortest_path(self.Adj, agg_label_1, agg_label_2)
-                    if connected_path is not None:
-                        # If a connection path is found, print the path
-                        print(f'The connections between {ind1} and {ind2} are via this path: {connected_path[0]} ', end="")
-                        for k in range(len(connected_path)-1):
-                            if self.Adj[connected_path[k]-1, connected_path[k+1]-1] == 2:
-                                print(f'(minPts) -> {connected_path[k+1]}', end="")
-                            else:
-                                print(f' -> {connected_path[k+1]}', end="")
-
-                        return connected_path
-                    
-                    else:
-                        # If no connection path is found, print that there is no connection, there must be something wrong with the code
-                        print(f"No connection path found between {ind1} and {ind2}, although they belong to different groups in the same cluster. Please check the program for bugs!")
-                        return None
-
-            else:
-                print(f"The data points at indices {ind1} and {ind2} belong to different clusters.")
 
 
     def bfs_shortest_path(self, adj_matrix, start, goal):

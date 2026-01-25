@@ -6,7 +6,6 @@
 
 import numpy as np
 cimport numpy as cnp
-from tqdm import tqdm
 import scipy.sparse as sparse
 
 # Use cnp.intp_t for indexing to handle Windows (32-bit long) vs Linux (64-bit long)
@@ -67,7 +66,7 @@ def merge_tanimoto(
     
     # PHASE 1: Build adjacency + DSU merging (Equivalent to label_sp[mask] = minlab)
     # -------------------------------------------------------------------------
-    for i in tqdm(range(n_groups), desc="Building adjacency", disable=not verbose):
+    for i in range(n_groups):
         if (not mergeTinyGroups) and (group_sizes[i] < minPts):
             continue
             
@@ -115,8 +114,7 @@ def merge_tanimoto(
     cdef double min_dist, d_val, lower_bound
     cdef int best_gid, target_cluster
     
-    # We must iterate through groups that belong to small clusters
-    for i in tqdm(range(n_groups), desc="minPts merging", disable=not verbose):
+    for i in range(n_groups):
         if cluster_sizes[label_sp_copy[i]] < minPts:
             min_dist = 2.0 
             best_gid = -1
