@@ -697,14 +697,11 @@ class CLASSIX:
                     mergeTinyGroups=self.__mergeTinyGroups
                 )
                 
-                labels_sorted = np.empty_like(self.groups_)
-                unique_groups = np.unique(self.groups_)
-                for g in unique_groups:
-                    cluster_id = merge_result['group_cluster_labels'][g]
-                    labels_sorted[self.groups_ == g] = cluster_id
-                
+                group2cluster = merge_result['group_cluster_labels']
+                labels_sorted = group2cluster[self.groups_]
+
                 self.labels_ = labels_sorted[np.argsort(self.ind)]
-                self.Adj = merge_result['Adj']  
+                self.Adj = merge_result['Adj']
                 
                 if self.__verbose:
                     print(f"Manhattan merging completed: {len(np.unique(self.labels_))} clusters")
@@ -728,13 +725,9 @@ class CLASSIX:
                 )
 
                 # same with manhattan distance
-                labels_sorted = np.empty_like(self.groups_)
-                unique_groups = np.unique(self.groups_)
-                for g in unique_groups:
-                    cluster_id = merge_result['group_cluster_labels'][g]
-                    labels_sorted[self.groups_ == g] = cluster_id
-                
-                print("!!!! new labels_sorted:", labels_sorted[:10])
+                group2cluster = merge_result['group_cluster_labels']
+                labels_sorted = group2cluster[self.groups_]
+
                 self.labels_ = labels_sorted[np.argsort(self.ind)]
                 self.Adj = merge_result['Adj']
                 if self.__verbose:

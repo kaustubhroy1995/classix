@@ -697,14 +697,11 @@ class CLASSIX:
                     mergeTinyGroups=self.__mergeTinyGroups
                 )
                 
-                labels_sorted = np.empty_like(self.groups_)
-                unique_groups = np.unique(self.groups_)
-                for g in unique_groups:
-                    cluster_id = merge_result['group_cluster_labels'][g]
-                    labels_sorted[self.groups_ == g] = cluster_id
-                
+                group2cluster = merge_result['group_cluster_labels']
+                labels_sorted = group2cluster[self.groups_]
+
                 self.labels_ = labels_sorted[np.argsort(self.ind)]
-                self.Adj = merge_result['Adj']  
+                self.Adj = merge_result['Adj']
                 
                 if self.__verbose:
                     print(f"Manhattan merging completed: {len(np.unique(self.labels_))} clusters")
@@ -728,13 +725,9 @@ class CLASSIX:
                 )
 
                 # same with manhattan distance
-                labels_sorted = np.empty_like(self.groups_)
-                unique_groups = np.unique(self.groups_)
-                for g in unique_groups:
-                    cluster_id = merge_result['group_cluster_labels'][g]
-                    labels_sorted[self.groups_ == g] = cluster_id
-                
-                print("!!!! new labels_sorted:", labels_sorted[:10])
+                group2cluster = merge_result['group_cluster_labels']
+                labels_sorted = group2cluster[self.groups_]
+
                 self.labels_ = labels_sorted[np.argsort(self.ind)]
                 self.Adj = merge_result['Adj']
                 if self.__verbose:
@@ -1244,7 +1237,7 @@ class CLASSIX:
                 self.s_pca = np.ones((len(self.splist_), 2))
                 self.s_pca[:, 0] = self.data[self.splist_[:, 0]].reshape(-1) 
                 
-            self.form_starting_point_clusters_table()
+            self.form_starting_point_clusters_table(data=self.data)
             
         if index1 is None and index2 is not None:
             raise ValueError("Please enter a valid value for index1.")
@@ -2000,7 +1993,7 @@ class CLASSIX:
             
         
         
-    def form_starting_point_clusters_table(self, aggregate=False):
+    def form_starting_point_clusters_table(self, data, aggregate=False):
         """form the columns details for group centers and clusters information"""
         
         # won't change the original order of self.splist_
@@ -2024,7 +2017,7 @@ class CLASSIX:
         else:
             for i in self.splist_[:, 0]:
                 fill = ""
-                sp_item = np.around(self.data[int(i), :], 2).tolist()
+                sp_item = np.around(data[int(i), :], 2).tolist()
                 if len(sp_item) <= 5:
                     for j in sp_item:
                         fill = fill + str(j) + " "
