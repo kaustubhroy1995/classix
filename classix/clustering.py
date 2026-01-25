@@ -79,7 +79,6 @@ def loadData(name='vdu_signals'):
 
     import logging
     logging.basicConfig()
-    log = logging.getLogger(__file__)
 
     current_dir, current_filename = os.path.split(__file__)
     
@@ -190,8 +189,6 @@ def loadData(name='vdu_signals'):
         
         warnings.warn("Invalid dataset identifier.")
 
-
-        
 
 def get_data(current_dir='', name='vdu_signals'):
     """Download the built-in sample data from the web."""
