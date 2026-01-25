@@ -1029,6 +1029,9 @@ class CLASSIX:
         
         Parameters
         ----------
+        data : numpy.ndarray
+            Original data used for clustering.
+
         index1 : int or numpy.ndarray, optional
             Input object1 [with index 'index1'] for explanation.
         
@@ -1222,9 +1225,12 @@ class CLASSIX:
                 self.label_change = dict(zip(groups_, self.labels_)) # how object change group to cluster.
         else:
             raise NotFittedError("Please use .fit() method first.")
-            
+
+        if not isinstance(data, np.ndarray):
+            data = np.asarray(data)    
         data_size = data.shape[0]
         feat_dim = data.shape[1]
+
 
         if not hasattr(self, 'self.sp_to_c_info'): #  ensure call PCA and form groups information table only once
             
