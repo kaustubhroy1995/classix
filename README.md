@@ -30,6 +30,7 @@ __CLASSIX__ is a fast, memory-efficient, and explainable clustering algorithm. H
 - Ability to detect and deal with outliers in the data
 - Ability to provide textual and visual explanations for the clusters
 - Full reproducibility of all tests in the accompanying paper
+- Support of Euclidean, Tanimoto and Manhatta distances
 - Support of Cython compilation
 
 __CLASSIX__ is a contrived acronym of *CLustering by Aggregation with Sorting-based Indexing* and the letter *X* for *explainability*. 
@@ -266,6 +267,7 @@ This project is licensed under the terms of the [MIT license](https://github.com
     <img alt="CLASSIX" src="https://raw.githubusercontent.com/nla-group/classix/master/docs/source/images/nla_logo.jpg" width="240" />
   </a>
 </p>
+
 
 
 
