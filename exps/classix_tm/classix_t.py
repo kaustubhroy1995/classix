@@ -135,6 +135,7 @@ class CLASSIX_T:
 
         sort_vals_sp = sort_vals[self.splist]
 
+        # merging
         label_sp = self.labels[self.splist].copy()
         scale = self.mergeScale
         self.Adj = np.zeros((len(self.splist), len(self.splist)), dtype=np.int8)
@@ -191,7 +192,6 @@ class CLASSIX_T:
         self.initial_merging_labels = deepcopy(label_sp)
 
         # Cluster redistribution
-        print(" minPts Merging")
         ul = np.unique(label_sp)
         cs = np.zeros(len(ul))
         group_sizes_arr = np.array(self.group_sizes)
@@ -205,6 +205,7 @@ class CLASSIX_T:
         labels_sp_copy_2 = deepcopy(label_sp)
 
         for cluster_id in small_clusters:
+            
             group_ids = np.where(labels_sp_copy_2 == cluster_id)[0]
             for gid in group_ids:
                 xi = self.spdata[gid, :].astype(np.float64)
@@ -225,6 +226,7 @@ class CLASSIX_T:
                 
                 o = np.argsort(d, kind='stable')
                 for nearest_gid in o:
+                    
                     target_cluster = labels_sp_copy_2[nearest_gid]
                     if cs[target_cluster] >= minPts:
                         label_sp[gid] = target_cluster

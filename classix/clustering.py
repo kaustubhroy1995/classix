@@ -616,7 +616,10 @@ class CLASSIX:
         elif self.metric == 'tanimoto':
             # Tanimoto 聚合
             try:
-                from .aggregate_td_cm import aggregate_tanimoto
+                if self.__enable_cython__:
+                    from .aggregate_td_cm import aggregate_tanimoto
+                else:
+                    from .aggregate_td import aggregate_tanimoto
             except (ModuleNotFoundError, ImportError):
                 from .aggregate_td import aggregate_tanimoto
                 warnings.warn("aggregation_td module is required for tanimoto metric, roll back to Python version.")
@@ -633,7 +636,11 @@ class CLASSIX:
         elif self.metric == 'manhattan':
             # Manhattan 聚合
             try:
-                from .aggregate_md_cm import aggregate_manhattan
+                if self.__enable_cython__:
+                    from .aggregate_md_cm import aggregate_manhattan
+                else:
+                    from .aggregate_md import aggregate_manhattan
+                    
             except (ModuleNotFoundError, ImportError):
                 from .aggregate_md import aggregate_manhattan
                 warnings.warn("aggregation_md module is required for manhattan metric, roll back to Python version.")
@@ -678,33 +685,30 @@ class CLASSIX:
                 except (ModuleNotFoundError, ImportError):
                     from .merge_md import merge_manhattan
                     warnings.warn("merge_md module is required for manhattan metric, roll back to Python version.")
-
-                spdata = self.data[self.splist_]                      # group centers
+                
+                spdata = self.data[self.splist_]                      
                 sort_vals_sp = sort_vals[self.splist_]
-                agg_labels_sp = np.arange(len(self.splist_))          # 每個 group 初始獨立 label
+                agg_labels_sp = np.arange(len(self.splist_))          
                 
                 merge_result = merge_manhattan(
                     spdata=spdata,
-                    group_sizes=self.group_sizes_,                    # 來自 aggregation_md 的 group_sizes
+                    group_sizes=self.group_sizes_,                    
                     sort_vals_sp=sort_vals_sp,
                     agg_labels_sp=agg_labels_sp,
                     radius=self.radius,
                     mergeScale=self.mergeScale_,
                     minPts=self.minPts,
-                    mergeTinyGroups=self.__mergeTinyGroups,
-                    verbose=self.__verbose
+                    mergeTinyGroups=self.__mergeTinyGroups
                 )
                 
-                # 映射回所有點（sorted space）
                 labels_sorted = np.empty_like(self.groups_)
                 unique_groups = np.unique(self.groups_)
                 for g in unique_groups:
                     cluster_id = merge_result['group_cluster_labels'][g]
                     labels_sorted[self.groups_ == g] = cluster_id
                 
-                # 還原原始順序
                 self.labels_ = labels_sorted[np.argsort(self.ind)]
-                self.Adj = merge_result['Adj']  # 可選保存，用於 explain/getPath
+                self.Adj = merge_result['Adj']  
                 
                 if self.__verbose:
                     print(f"Manhattan merging completed: {len(np.unique(self.labels_))} clusters")
@@ -715,8 +719,8 @@ class CLASSIX:
                 except (ModuleNotFoundError, ImportError):
                     from .merge_td import merge_tanimoto
                     warnings.warn("merge_td module is required for tanimoto metric, roll back to Python version.")
-
-                spdata = self.data[self.splist_]
+                
+                spdata = self.data[self.splist_,:]
                 sort_vals_sp = sort_vals[self.splist_]
                 agg_labels_sp = np.arange(len(self.splist_))
                 
@@ -728,8 +732,7 @@ class CLASSIX:
                     radius=self.radius,
                     mergeScale=self.mergeScale_,
                     minPts=self.minPts,
-                    mergeTinyGroups=self.__mergeTinyGroups,
-                    verbose=self.__verbose
+                    mergeTinyGroups=self.__mergeTinyGroups
                 )
 
                 # same with manhattan distance
@@ -739,6 +742,7 @@ class CLASSIX:
                     cluster_id = merge_result['group_cluster_labels'][g]
                     labels_sorted[self.groups_ == g] = cluster_id
                 
+                print("!!!! new labels_sorted:", labels_sorted[:10])
                 self.labels_ = labels_sorted[np.argsort(self.ind)]
                 self.Adj = merge_result['Adj']
                 if self.__verbose:

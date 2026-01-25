@@ -2,165 +2,205 @@
 # cython: boundscheck=False
 # cython: wraparound=False
 # cython: cdivision=True
-# cython: initializedcheck=False
+# cython: nonecheck=False
 
 import numpy as np
 cimport numpy as cnp
-import scipy.sparse as sparse
-
-# Use cnp.intp_t for indexing to handle Windows (32-bit long) vs Linux (64-bit long)
-# Use int32 for DSU parent array for memory efficiency
-
-cdef int find_root(int* parent, int i) nogil:
-    if parent[i] == i:
-        return i
-    parent[i] = find_root(parent, parent[i])
-    return parent[i]
-
-cdef void union_sets(int* parent, int i, int j) nogil:
-    cdef int root_i = find_root(parent, i)
-    cdef int root_j = find_root(parent, j)
-    if root_i != root_j:
-        # To match your Python "minlab" logic, we always point to the smaller index
-        if root_i < root_j:
-            parent[root_j] = root_i
-        else:
-            parent[root_i] = root_j
-
-cdef int c_searchsorted(double[:] arr, double target, int n) nogil:
-    cdef int low = 0, high = n, mid
-    while low < high:
-        mid = (low + high) // 2
-        if arr[mid] <= target:
-            low = mid + 1
-        else:
-            high = mid
-    return low
+from scipy.sparse import csr_matrix
+from spmv import spsubmatxvec
 
 def merge_tanimoto(
-    double[:, :] spdata,              
-    long[:] group_sizes,         
-    double[:] sort_vals_sp,        
-    cnp.intp_t[:] agg_labels_sp,       
-    double radius,               
-    double mergeScale,          
-    int minPts,              
-    int mergeTinyGroups,     
-    verbose=False        
+    spdata,
+    group_sizes,
+    sort_vals_sp,
+    agg_labels_sp,
+    radius,
+    mergeScale,
+    minPts,
+    mergeTinyGroups
 ):
+    """
+    Perform Tanimoto-based group merging for CLASSIX clustering.
+
+    This function merges aggregation groups (starting points) using Tanimoto distance
+    (1 - Tanimoto similarity) with a scaled radius threshold. It first builds a graph
+    of connected groups, performs union-find style merging (assigning to the smallest
+    label), then redistributes points from small clusters (size < minPts) to the
+    nearest valid cluster using full Tanimoto distance.
+
+    Parameters
+    ----------
+    spdata : ndarray of shape (n_groups, n_features)
+        Coordinates of the group starting points (aggregation representatives).
+        
+    group_sizes : array-like of shape (n_groups,)
+        Number of points in each aggregation group.
+
+    sort_vals_sp : ndarray of shape (n_groups,)
+        Precomputed sorting values (e.g., L1 norms) for the starting points,
+        used to define search windows.
+
+    agg_labels_sp : ndarray of shape (n_groups,)
+        Initial group labels from aggregation phase (usually 0 to n_groups-1).
+
+    radius : float
+        Base radius parameter from CLASSIX.
+
+    mergeScale : float
+        Scaling factor for the merging radius (effective radius = mergeScale * radius).
+
+    minPts : int
+        Minimum number of points required for a cluster to be valid.
+        Groups/clusters smaller than minPts are redistributed.
+
+    mergeTinyGroups : bool
+        If False, tiny groups (size < minPts) are ignored when building edges in
+        the merging graph (they do not initiate connections).
+
+    Returns
+    -------
+    dict
+        Dictionary containing:
+        - 'group_cluster_labels' : ndarray of shape (n_groups,)
+            Final cluster label for each starting point (0, 1, 2, ..., n_clusters-1).
+        - 'Adj' : ndarray of shape (n_groups, n_groups), dtype=int8
+            Adjacency matrix of the merging graph.
+            1 = connected by Tanimoto distance <= mergeScale * radius
+            2 = connection created during small-cluster redistribution
+    """
+    # Ensure contiguous arrays with correct dtypes for maximum performance
+    spdata = np.ascontiguousarray(spdata, dtype=np.float64)
+    group_sizes = np.asarray(group_sizes, dtype=np.int64)
+    sort_vals_sp = np.ascontiguousarray(sort_vals_sp, dtype=np.float64)
+    agg_labels_sp = np.asarray(agg_labels_sp, dtype=np.int64)
+
     cdef int n_groups = spdata.shape[0]
-    cdef double threshold = mergeScale * radius
-    
-    # Fast CSR access
-    spdatas = sparse.csr_matrix(spdata)
-    cdef double[:] data = spdatas.data
-    cdef int[:] indices = spdatas.indices
-    cdef int[:] indptr = spdatas.indptr
-    
-    cdef signed char[:, :] Adj = np.zeros((n_groups, n_groups), dtype=np.int8)
-    # parent array implements the 'label_sp' logic from your Python code via DSU
-    cdef int[:] parent = np.arange(n_groups, dtype=np.int32)
-    
-    cdef int i, j, k, last_j
-    cdef double dot, tan_dist, search_radius, norm_i, norm_j
-    
-    # PHASE 1: Build adjacency + DSU merging (Equivalent to label_sp[mask] = minlab)
-    # -------------------------------------------------------------------------
+    cdef cnp.ndarray[cnp.int64_t, ndim=1] label_sp = agg_labels_sp.copy()
+
+    # Build CSR matrix (Python object – cannot be cdef as a C type)
+    spdatas = csr_matrix(spdata)
+
+    # Extract CSR components as typed, contiguous NumPy arrays (matching original code)
+    cdef cnp.ndarray[cnp.float64_t, ndim=1] spdatas_data = spdatas.data.astype(np.float64)
+    cdef cnp.ndarray[cnp.int32_t, ndim=1] spdatas_indices = spdatas.indices.astype(np.int32)
+    cdef cnp.ndarray[cnp.int32_t, ndim=1] spdatas_indptr = spdatas.indptr.astype(np.int32)
+
+    # Adjacency matrix
+    cdef cnp.ndarray[cnp.int8_t, ndim=2] Adj = np.zeros((n_groups, n_groups), dtype=np.int8)
+
+    # Pre-allocate reusable large arrays (size n_groups) to avoid repeated allocation
+    cdef cnp.ndarray[cnp.float64_t, ndim=1] ips = np.zeros(n_groups, dtype=np.float64)
+    cdef cnp.ndarray[cnp.float64_t, ndim=1] denom = np.empty(n_groups, dtype=np.float64)
+    cdef cnp.ndarray[cnp.float64_t, ndim=1] tanimoto_dist = np.empty(n_groups, dtype=np.float64)
+
+    # Views/slices for windowed computations in the main loop
+    cdef cnp.ndarray[cnp.float64_t, ndim=1] ips_slice
+    cdef cnp.ndarray[cnp.float64_t, ndim=1] denom_slice
+    cdef cnp.ndarray[cnp.float64_t, ndim=1] tanimoto_slice
+
+    # Temporary index arrays
+    cdef cnp.ndarray[cnp.int64_t, ndim=1] rel_inds
+    cdef cnp.ndarray[cnp.int64_t, ndim=1] inds
+    cdef cnp.ndarray[cnp.int64_t, ndim=1] connected_labels
+
+    cdef int i, window_start, window_end, window_size
+    cdef double search_radius
+    cdef long minlab
+
+    # Main merging phase: build graph and perform on-the-fly union-find merging
     for i in range(n_groups):
-        if (not mergeTinyGroups) and (group_sizes[i] < minPts):
+        if not mergeTinyGroups and group_sizes[i] < minPts:
             continue
-            
-        norm_i = sort_vals_sp[i]
-        search_radius = norm_i / (1.0 - threshold)
-        last_j = c_searchsorted(sort_vals_sp, search_radius, n_groups)
-        
-        with nogil:
-            for j in range(i + 1, last_j):
-                if (not mergeTinyGroups) and (group_sizes[j] < minPts):
-                    continue
-                
-                # Manual Dot Product (equivalent to spsubmatxvec)
-                dot = 0.0
-                for k in range(indptr[j], indptr[j+1]):
-                    dot += spdata[i, indices[k]] * data[k]
-                
-                norm_j = sort_vals_sp[j]
-                # Tanimoto Dist: 1 - (ips / (norm_i + norm_j - ips))
-                tan_dist = 1.0 - (dot / (norm_i + norm_j - dot))
-                
-                if tan_dist <= threshold:
-                    Adj[i, j] = 1
-                    Adj[j, i] = 1
-                    union_sets(&parent[0], i, j)
 
-    # Convert DSU to flat labels for Phase 2
-    cdef int[:] label_sp = np.zeros(n_groups, dtype=np.int32)
-    for i in range(n_groups):
-        label_sp[i] = find_root(&parent[0], i)
+        search_radius = sort_vals_sp[i] / (1.0 - mergeScale * radius)
+        window_end = np.searchsorted(sort_vals_sp, search_radius, side='right')
+        window_start = i
+        window_size = min(window_end, n_groups) - window_start
 
-    # PHASE 2: minPts redistribution
-    # -------------------------------------------------------------------------
-    unique_labels, inverse_indices = np.unique(np.asarray(label_sp), return_inverse=True)
-    cdef int[:] current_labels = inverse_indices.astype(np.int32)
-    cdef int n_clusters = len(unique_labels)
-    
-    cdef long[:] cluster_sizes = np.zeros(n_clusters, dtype=np.int64)
-    for i in range(n_groups):
-        cluster_sizes[current_labels[i]] += group_sizes[i]
+        if window_size > 0:
+            ips_slice = ips[:window_size]
 
-    # Find labels of clusters that are too small
-    # We use a copy of labels to ensure redistribution doesn't cascade mid-loop
-    cdef int[:] label_sp_copy = np.copy(current_labels)
-    cdef double min_dist, d_val, lower_bound
-    cdef int best_gid, target_cluster
-    
-    for i in range(n_groups):
-        if cluster_sizes[label_sp_copy[i]] < minPts:
-            min_dist = 2.0 
-            best_gid = -1
-            norm_i = sort_vals_sp[i]
-            
-            with nogil:
-                for j in range(n_groups):
-                    # In your Python: if cs[target_cluster] >= minPts
-                    # We check the cluster size of group j
-                    target_cluster = label_sp_copy[j]
-                    if cluster_sizes[target_cluster] < minPts:
-                        continue
-                    
-                    norm_j = sort_vals_sp[j]
-                    
-                    # Tanimoto Pruning: Optimization that doesn't change the result
-                    if norm_i < norm_j:
-                        lower_bound = 1.0 - (norm_i / norm_j)
-                    else:
-                        lower_bound = 1.0 - (norm_j / norm_i)
-                    
-                    if lower_bound > min_dist:
-                        continue
-                        
-                    dot = 0.0
-                    for k in range(indptr[j], indptr[j+1]):
-                        dot += spdata[i, indices[k]] * data[k]
-                    
-                    d_val = 1.0 - (dot / (norm_i + norm_j - dot))
-                    
-                    # Stable tie-breaking: if distances are equal, keep the first one found
-                    # (Matches np.argsort with kind='stable' behavior)
-                    if d_val < min_dist:
-                        min_dist = d_val
-                        best_gid = j
-            
-            if best_gid != -1:
-                current_labels[i] = label_sp_copy[best_gid]
-                Adj[i, best_gid] = 2
-                Adj[best_gid, i] = 2
+            # Compute inner products only for the sorted search window
+            spsubmatxvec(
+                spdatas_data, spdatas_indptr, spdatas_indices,
+                window_start, window_start + window_size, spdata[i], ips_slice
+            )
 
-    # Final Renumbering to 0...K-1
-    final_unique, final_labels = np.unique(np.asarray(current_labels), return_inverse=True)
-        
+            denom_slice = denom[:window_size]
+            denom_slice[:] = sort_vals_sp[i] + sort_vals_sp[window_start:window_start + window_size] - ips_slice
+            denom_slice[denom_slice == 0.0] = 1e-15
+
+            tanimoto_slice = tanimoto_dist[:window_size]
+            tanimoto_slice[:] = 1.0 - ips_slice / denom_slice
+
+            rel_inds = np.nonzero(tanimoto_slice <= mergeScale * radius)[0]
+
+            if rel_inds.size > 0:
+                inds = window_start + rel_inds
+
+                if not mergeTinyGroups:
+                    inds = inds[group_sizes[inds] >= minPts]
+
+                if inds.size > 0:
+                    # Symmetric adjacency edges
+                    Adj[i, inds] = 1
+                    Adj[inds, i] = 1
+
+                    # Merge to smallest label (np.unique returns sorted array)
+                    connected_labels = np.unique(label_sp[inds])
+                    if connected_labels.size > 1:
+                        minlab = connected_labels[0]
+                        for cl in connected_labels:
+                            label_sp[label_sp == cl] = minlab
+
+    # Compute cluster sizes after main merging phase
+    cdef cnp.ndarray[cnp.int64_t, ndim=1] unique_labels = np.unique(label_sp)
+    cdef dict cluster_sizes = {}
+    cdef long lbl
+    for lbl in unique_labels:
+        cluster_sizes[lbl] = np.sum(group_sizes[label_sp == lbl])
+
+    # Identify small clusters
+    small_clusters = [lbl for lbl in unique_labels if cluster_sizes[lbl] < minPts]
+
+    # Redistribution variables (declared here to avoid scoped cdef issues)
+    cdef cnp.ndarray[cnp.int64_t, ndim=1] label_sp_fixed
+    cdef cnp.ndarray[cnp.int64_t, ndim=1] group_ids
+    cdef cnp.ndarray[cnp.int64_t, ndim=1] sorted_indices
+    cdef long cluster_id, gid, target_gid, target_cluster
+
+    # Redistribution phase for tiny clusters
+    if small_clusters:
+        label_sp_fixed = label_sp.copy()
+
+        for cluster_id in small_clusters:
+            group_ids = np.nonzero(label_sp_fixed == cluster_id)[0]
+            for gid in group_ids:
+                # Full inner products with all groups
+                spsubmatxvec(
+                    spdatas_data, spdatas_indptr, spdatas_indices,
+                    0, n_groups, spdata[gid], ips
+                )
+
+                denom[:] = sort_vals_sp[gid] + sort_vals_sp - ips
+                denom[denom == 0.0] = 1e-15
+                tanimoto_dist[:] = 1.0 - ips / denom
+
+                sorted_indices = np.argsort(tanimoto_dist)
+
+                for target_gid in sorted_indices:
+                    target_cluster = label_sp_fixed[target_gid]
+                    if cluster_sizes[target_cluster] >= minPts:
+                        label_sp[gid] = target_cluster
+                        Adj[gid, target_gid] = 2
+                        Adj[target_gid, gid] = 2
+                        break
+
+    # Final consecutive renumbering - vectorized
+    cdef cnp.ndarray[cnp.int64_t, ndim=1] final_ul = np.unique(label_sp)
+    cdef cnp.ndarray[cnp.int64_t, ndim=1] group_cluster_labels = np.searchsorted(final_ul, label_sp)
+
     return {
-        'group_cluster_labels': final_labels.astype(np.int32),
-        'Adj': np.asarray(Adj),
-        'final_cluster_sizes': np.bincount(final_labels).astype(np.int64)
+        'group_cluster_labels': group_cluster_labels,
+        'Adj': Adj
     }

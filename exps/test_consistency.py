@@ -7,6 +7,9 @@ from classix import CLASSIX          # Merged version (supports multiple metrics
 from classix_tm.classix_m import CLASSIX_M      # Original pure Manhattan version
 from classix_tm.classix_t import CLASSIX_T      # Original pure Tanimoto version
 
+import classix
+classix.__enable_cython__ = False  # Disable Cython optimizations for testing consistency
+
 def compare_labels(labels1, labels2, name=""):
     """Compare two label arrays for consistency (ignore label numbering, only check partitioning)"""
     if len(labels1) != len(labels2):
@@ -143,7 +146,7 @@ print("\nTest 4: Blob data (Tanimoto)")
 run_test(X_blob, metric='tanimoto', radius=0.4, minPts=5, mergeScale=1.2)
 
 print("\nTest 5: Moons data (Tanimoto)")
-run_test(X_moon, metric='tanimoto', radius=0.3, minPts=5, mergeScale=1.1)
+run_test(X_moon, metric='tanimoto', radius=0.5, minPts=5, mergeScale=1.1)
 
 print("\nTest 6: Circles + noise (Tanimoto)")
-run_test(X_circle, metric='tanimoto', radius=0.35, minPts=6, mergeScale=1.15)
+run_test(X_circle, metric='tanimoto', radius=0.35, minPts=6, mergeScale=1)

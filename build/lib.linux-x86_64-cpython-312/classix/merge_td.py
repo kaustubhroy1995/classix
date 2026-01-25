@@ -1,138 +1,147 @@
 import numpy as np
 import scipy.sparse as sparse
-from spmv import spsubmatxvec  # Sparse submatrix-vector multiplication (C extension)
+from copy import deepcopy
+from spmv import spsubmatxvec
 
-def merge_tanimoto(
-    spdata,              # Group centers in sorted space (dense numpy array, shape: n_groups x dim)
-    group_sizes,         # Size of each aggregation group (numpy array, length: n_groups)
-    sort_vals_sp,        # sort_vals for group centers (numpy array, length: n_groups)
-    agg_labels_sp,       # Initial group labels (typically np.arange(n_groups))
-    radius,              # Aggregation radius
-    mergeScale,          # Merging scale factor
-    minPts,              # Minimum points for a valid cluster
-    mergeTinyGroups,     # Whether to ignore tiny groups during initial merging
-    verbose=False        # Whether to show progress bars
-):
+def merge_tanimoto(spdata, group_sizes, sort_vals_sp, agg_labels_sp, radius, mergeScale, minPts, mergeTinyGroups):
     """
-    Tanimoto distance-based group merging with edge-wise merging and minPts redistribution.
-    Fully matches the behavior of the original CLASSIX_T implementation.
+    Perform Tanimoto-based group merging for CLASSIX clustering.
+
+    This function merges aggregation groups (starting points) using Tanimoto distance
+    (1 - Tanimoto similarity) with a scaled radius threshold. It first builds a graph
+    of connected groups, performs union-find style merging (assigning to the smallest
+    label), then redistributes points from small clusters (size < minPts) to the
+    nearest valid cluster using full Tanimoto distance.
+
+    Parameters
+    ----------
+    spdata : ndarray of shape (n_groups, n_features)
+        Coordinates of the group starting points (aggregation representatives).
+        
+    group_sizes : array-like of shape (n_groups,)
+        Number of points in each aggregation group.
+
+    sort_vals_sp : ndarray of shape (n_groups,)
+        Precomputed sorting values (e.g., L1 norms) for the starting points,
+        used to define search windows.
+
+    agg_labels_sp : ndarray of shape (n_groups,)
+        Initial group labels from aggregation phase (usually 0 to n_groups-1).
+
+    radius : float
+        Base radius parameter from CLASSIX.
+
+    mergeScale : float
+        Scaling factor for the merging radius (effective radius = mergeScale * radius).
+
+    minPts : int
+        Minimum number of points required for a cluster to be valid.
+        Groups/clusters smaller than minPts are redistributed.
+
+    mergeTinyGroups : bool
+        If False, tiny groups (size < minPts) are ignored when building edges in
+        the merging graph (they do not initiate connections).
+
+    Returns
+    -------
+    dict
+        Dictionary containing:
+        - 'group_cluster_labels' : ndarray of shape (n_groups,)
+            Final cluster label for each starting point (0, 1, 2, ..., n_clusters-1).
+        - 'Adj' : ndarray of shape (n_groups, n_groups), dtype=int8
+            Adjacency matrix of the merging graph.
+            1 = connected by Tanimoto distance <= mergeScale * radius
+            2 = connection created during small-cluster redistribution
+
     """
     n_groups = len(spdata)
-    
-    # Convert group centers to CSR sparse format for fast inner products
-    spdatas = sparse.csr_matrix(spdata)
-    spdatas_data = spdatas.data
-    spdatas_indices = spdatas.indices
-    spdatas_indptr = spdatas.indptr
-    
-    # Adjacency matrix (for explainability / path finding)
-    Adj = np.zeros((n_groups, n_groups), dtype=np.int8)
-    
-    # Current cluster labels for groups (initially independent)
     label_sp = agg_labels_sp.copy()
     
-    # Phase 1: Build adjacency + aggressive edge-wise merging
-    for i in n_groups:
+    spdatas = sparse.csr_matrix(spdata)
+    spdatas_data = spdatas.data.astype(np.float64)
+    spdatas_indices = spdatas.indices.astype(np.int32)
+    spdatas_indptr = spdatas.indptr.astype(np.int32)
+    
+    Adj = np.zeros((n_groups, n_groups), dtype=np.int8)
+    
+    for i in range(n_groups):
         if not mergeTinyGroups and group_sizes[i] < minPts:
             continue
-        
-        xi = spdata[i]
-        # Tanimoto inequality-derived search bound
+            
+        xi = spdata[i, :].astype(np.float64)
         search_radius = sort_vals_sp[i] / (1 - mergeScale * radius)
         last_j = np.searchsorted(sort_vals_sp, search_radius, side='right')
         
-        if last_j > i:
-            # Pre-allocate output array for inner products
-            n_rows = last_j - i
-            ips = np.zeros(n_rows, dtype=np.float64)
-            
-            # Sparse inner product: rows [i:last_j) dot xi
+        window_start = i
+        window_end = min(last_j, n_groups)
+        window_size = window_end - window_start
+        
+        if window_size > 0:
+            ips = np.zeros(window_size, dtype=np.float64)
             spsubmatxvec(
-                spdatas_data.astype(np.float64),
-                spdatas_indptr,
-                spdatas_indices,
-                i,
-                last_j,
-                xi.astype(np.float64),
-                ips
+                spdatas_data, spdatas_indptr, spdatas_indices,
+                window_start, window_end, xi, ips
             )
             
-            # Tanimoto similarity and distance
-            tanimoto_sim = ips / (sort_vals_sp[i] + sort_vals_sp[i:last_j] - ips)
-            tanimoto_dist = 1 - tanimoto_sim
+            denom = sort_vals_sp[i] + sort_vals_sp[window_start:window_end] - ips
+            denom[denom == 0] = 1e-15
+            tanimoto_dist = 1 - ips / denom
             
-            # Connected groups
-            inds_rel = np.where(tanimoto_dist <= mergeScale * radius)[0]
-            inds = i + inds_rel
+            rel_inds = np.where(tanimoto_dist <= mergeScale * radius)[0]
+            inds = i + rel_inds
             
             if not mergeTinyGroups:
-                valid = group_sizes[inds] >= minPts
+                valid = np.array(group_sizes)[inds] >= minPts
                 inds = inds[valid]
             
-            # Update adjacency (symmetric)
             Adj[i, inds] = 1
             Adj[inds, i] = 1
             
-            # Critical: merge labels immediately upon discovering connections
             connected_labels = np.unique(label_sp[inds])
             if len(connected_labels) > 1:
                 minlab = np.min(connected_labels)
                 for lbl in connected_labels:
                     label_sp[label_sp == lbl] = minlab
-    
-    # Phase 2: minPts-based redistribution of tiny clusters
+
+        
     ul = np.unique(label_sp)
-    cs = np.zeros(len(ul), dtype=int)
     group_sizes_arr = np.array(group_sizes)
+    cluster_sizes = {lbl: np.sum(group_sizes_arr[label_sp == lbl]) for lbl in ul}
     
-    # Renumber clusters contiguously and compute sizes
-    new_label_map = {old: new for new, old in enumerate(ul)}
-    for old, new in new_label_map.items():
-        mask = (label_sp == old)
-        cs[new] = np.sum(group_sizes_arr[mask])
-        label_sp[mask] = new
+    small_clusters = [lbl for lbl, size in cluster_sizes.items() if size < minPts]
     
-    small_clusters = np.where(cs < minPts)[0]
-    
-    label_sp_copy = label_sp.copy()
-    
-    for cluster_id in small_clusters:
-        group_ids = np.where(label_sp_copy == cluster_id)[0]
-        for gid in group_ids:
-            xi = spdata[gid]
-            
-            # Full inner products with all group centers
-            ips = np.zeros(n_groups, dtype=np.float64)
-            spsubmatxvec(
-                spdatas_data.astype(np.float64),
-                spdatas_indptr,
-                spdatas_indices,
-                0,
-                n_groups,
-                xi.astype(np.float64),
-                ips
-            )
-            
-            # Tanimoto distance to all groups
-            d = 1 - ips / (sort_vals_sp[gid] + sort_vals_sp - ips)
-            order = np.argsort(d, kind='stable')
-            
-            # Reassign to nearest large cluster
-            for nearest_gid in order:
-                target_cluster = label_sp_copy[nearest_gid]
-                if cs[target_cluster] >= minPts:
-                    label_sp[gid] = target_cluster
-                    Adj[gid, nearest_gid] = 2
-                    Adj[nearest_gid, gid] = 2
-                    break
-    
-    # Final contiguous renumbering
-    ul_final = np.unique(label_sp)
-    final_map = {old: new for new, old in enumerate(ul_final)}
+    if small_clusters:
+        label_sp_fixed = label_sp.copy()
+        
+        for cluster_id in small_clusters:
+            group_ids = np.where(label_sp_fixed == cluster_id)[0]
+            for gid in group_ids:
+                xi = spdata[gid, :].astype(np.float64)
+                ips = np.zeros(n_groups, dtype=np.float64)
+                
+                spsubmatxvec(
+                    spdatas_data, spdatas_indptr, spdatas_indices,
+                    0, n_groups, xi, ips
+                )
+                
+                denom = sort_vals_sp[gid] + sort_vals_sp - ips
+                denom[denom == 0] = 1e-15
+                dist = 1 - ips / denom
+                
+                sorted_indices = np.argsort(dist, kind='stable')
+                for target_gid in sorted_indices:
+                    target_cluster = label_sp_fixed[target_gid]
+                    if cluster_sizes[target_cluster] >= minPts:
+                        label_sp[gid] = target_cluster
+                        Adj[gid, target_gid] = 2 
+                        Adj[target_gid, gid] = 2
+                        break
+
+    final_ul = np.unique(label_sp)
+    final_map = {old: new for new, old in enumerate(final_ul)}
     label_sp = np.array([final_map[l] for l in label_sp])
-    
+
     return {
-        'group_cluster_labels': label_sp,           # Final cluster ID for each group
-        'Adj': Adj,                                 # Adjacency matrix (for explainability)
-        'final_cluster_sizes': np.bincount(label_sp)  # Sizes of final clusters
+        'group_cluster_labels': label_sp,
+        'Adj': Adj
     }
