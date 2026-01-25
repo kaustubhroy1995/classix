@@ -19,6 +19,8 @@ jobs:
 
       - name: Install dependencies
         run: |
+          rm -rf build
+          rm -rf dist
           pip install -r requirements.txt
           pip install -U scikit-learn
           pip install pytest pytest-cov coverage setuptools
