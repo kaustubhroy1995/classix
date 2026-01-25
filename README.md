@@ -10,7 +10,7 @@
 [![!pypi](https://img.shields.io/pypi/v/classixclustering?color=red)](https://pypi.org/project/classixclustering/)
 ![Static Badge](https://img.shields.io/badge/Compiler-8A2BE2?label=Cython-Accelerated)
 [![Anaconda-Server Badge](https://anaconda.org/conda-forge/classixclustering/badges/version.svg)](https://anaconda.org/conda-forge/classixclustering)
-[![codecov](https://codecov.io/gh/nla-group/classix/branch/master/graph/badge.svg?token=D4MQZS67H1)](https://codecov.io/gh/nla-group/classix)
+[![Workflow for Codecov (with Cython coverage)](https://github.com/nla-group/classix/actions/workflows/codecov.yml/badge.svg)](https://github.com/nla-group/classix/actions/workflows/codecov.yml)
 
 [![License: MIT](https://anaconda.org/conda-forge/classixclustering/badges/license.svg)](https://github.com/nla-group/classix/blob/master/LICENSE)
 [![azure](https://dev.azure.com/conda-forge/feedstock-builds/_apis/build/status/classixclustering-feedstock?branchName=main)](https://dev.azure.com/conda-forge/feedstock-builds/_build/latest?definitionId=15797&branchName=main)
@@ -266,6 +266,7 @@ This project is licensed under the terms of the [MIT license](https://github.com
     <img alt="CLASSIX" src="https://raw.githubusercontent.com/nla-group/classix/master/docs/source/images/nla_logo.jpg" width="240" />
   </a>
 </p>
+
 
 
 
