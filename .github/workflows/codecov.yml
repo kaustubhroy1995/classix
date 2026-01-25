@@ -1,4 +1,4 @@
-name: Workflow for Codecov
+name: Workflow for Codecov (with Cython coverage)
 
 on:
   push:
@@ -29,11 +29,11 @@ jobs:
       - name: Clean build
         run: |
           python setup.py clean --all
-          rm -rf build *.so *.pyd
+          rm -rf build *.so *.pyd *.c
 
       - name: Build Cython extensions
         run: |
-          # 如果想测 Cython 覆盖率，开启 linetrace
+          # 开启 Cython linetrace
           export CFLAGS="-O0 -DCYTHON_TRACE=1"
           python setup.py build_ext --inplace
 
@@ -42,8 +42,9 @@ jobs:
           pip install -e .
 
       - name: Run tests with coverage
+        env:
+          CYTHON_TRACE: 1  
         run: |
-          # 覆盖 classix 目录下的 Python 代码
           pytest tests/unittests.py --cov=classix --cov-report=xml
 
       - name: Upload coverage to Codecov
