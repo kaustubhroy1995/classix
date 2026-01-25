@@ -265,7 +265,7 @@ class TestClassix(unittest.TestCase):
             clx.fit_transform(X)
             print(clx.clusterSizes_)
             print(clx.groupCenters_)
-            clx.explain(index1='Carl', index2='Bert', plot=False, show_connected_label=True, showallgroups=True, sp_fontsize=12)  
+            clx.explain(X, index1='Carl', index2='Bert', plot=False, show_connected_label=True, showallgroups=True, sp_fontsize=12)  
             
         except:
             checkpoint = 0
@@ -281,10 +281,10 @@ class TestClassix(unittest.TestCase):
             clx = CLASSIX(radius=0.5, group_merging='distance', minPts=3)
             clx.fit_transform(X)
             clx.predict(X)
-            clx.explain(plot=False, figsize=(10,10),  savefig=False)
-            clx.explain(0,  plot=False, savefig=False)
-            clx.explain(3, 2000,  plot=False, savefig=False)
-            clx.explain(0, 2008,  plot=False, savefig=False)
+            clx.explain(X, plot=False, figsize=(10,10),  savefig=False)
+            clx.explain(X, 0,  plot=False, savefig=False)
+            clx.explain(X, 3, 2000,  plot=False, savefig=False)
+            clx.explain(X, 0, 2008,  plot=False, savefig=False)
         except:
             checkpoint = 0
 
