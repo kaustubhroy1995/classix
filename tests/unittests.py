@@ -233,21 +233,21 @@ class TestClassix(unittest.TestCase):
             clx.predict(X)
             clx.predict(X[:1000])
 
-            clx.explain(plot=False, showsplist=True, figsize=(10,10),  savefig=True)
-            clx.explain(0,  plot=False, savefig=True, showsplist=True)
+            clx.explain(data=X, plot=False, showsplist=True, figsize=(10,10),  savefig=True)
+            clx.explain(X, 0,  plot=False, savefig=True, showsplist=True)
             clx.form_starting_point_clusters_table(data=clx.data, aggregate=True)
-            clx.explain(3, 2000,  plot=False, savefig=False)
-            clx.explain(0, 2008,  plot=False, savefig=True, replace_name=['Superman', 'Batman'])
+            clx.explain(X, 3, 2000,  plot=False, savefig=False)
+            clx.explain(X, 0, 2008,  plot=False, savefig=True, replace_name=['Superman', 'Batman'])
 
-            clx.explain(2000, 2028,  plot=False, add_arrow=True, savefig=True, showallgroups=True, include_dist=True)
+            clx.explain(X, 2000, 2028,  plot=False, add_arrow=True, savefig=True, showallgroups=True, include_dist=True)
                 
-            clx.explain(0, 2008,  plot=False, add_arrow=True, directed_arrow=-1, savefig=True, fmt='pdf')
-            clx.explain(0, 2008,  plot=False, add_arrow=True, directed_arrow=1, savefig=True, fmt='png')
-            clx.explain(index1=[0, 0], index2=[4,5], plot=False, add_arrow=True, show_connected_label=True, directed_arrow=1)
-            clx.explain(index1=np.array([6, 6]), index2=np.array([6, 6]), plot=False, add_arrow=True, directed_arrow=1)
+            clx.explain(X, 0, 2008,  plot=False, add_arrow=True, directed_arrow=-1, savefig=True, fmt='pdf')
+            clx.explain(X, 0, 2008,  plot=False, add_arrow=True, directed_arrow=1, savefig=True, fmt='png')
+            clx.explain(X, index1=[0, 0], index2=[4,5], plot=False, add_arrow=True, show_connected_label=True, directed_arrow=1)
+            clx.explain(X, index1=np.array([6, 6]), index2=np.array([6, 6]), plot=False, add_arrow=True, directed_arrow=1)
             clx = CLASSIX(radius=0.5, group_merging='distance', minPts=4999, mergeTinyGroups=False)
             clx.fit(X)
-            clx.explain(0, 2008,  plot=False, add_arrow=True, directed_arrow=-1, savefig=True, fmt='jpg')
+            clx.explain(X, 0, 2008,  plot=False, add_arrow=True, directed_arrow=-1, savefig=True, fmt='jpg')
             clx.timing()
         except:
             checkpoint = 0
@@ -300,10 +300,10 @@ class TestClassix(unittest.TestCase):
             clx = CLASSIX(radius=0.5, group_merging='distance', minPts=3)
             clx.fit_transform(X)
             clx.predict(X)
-            clx.explain(plot=False, figsize=(10,10),  savefig=False)
-            clx.explain(0,  plot=False, savefig=False)
-            clx.explain(3, 2000,  plot=False, savefig=False)
-            clx.explain(0, 2008,  plot=False, savefig=False)
+            clx.explain(X, plot=False, figsize=(10,10),  savefig=False)
+            clx.explain(X, 0,  plot=False, savefig=False)
+            clx.explain(X, 3, 2000,  plot=False, savefig=False)
+            clx.explain(X, 0, 2008,  plot=False, savefig=False)
         except:
             checkpoint = 0
 
@@ -316,11 +316,11 @@ class TestClassix(unittest.TestCase):
         try:
             clx = CLASSIX(radius=0.1, minPts=99, verbose=1, group_merging='distance')
             clx.fit(X)
-            clx.explain(773, 22, plot=False,  add_arrow=True, include_dist=False)
+            clx.explain(data=X, index1=773, index2=22, plot=False,  add_arrow=True, include_dist=False)
 
             clx = CLASSIX(radius=0.1, minPts=99, verbose=1, group_merging='density')
             clx.fit(X)
-            clx.explain(773, 22, plot=False,  add_arrow=True, include_dist=False)
+            clx.explain(data=X, index1=773, index2=22, plot=False,  add_arrow=True, include_dist=False)
         except:
             checkpoint = 0
             

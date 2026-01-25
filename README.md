@@ -74,7 +74,7 @@ import classix
 data, labels = classix.loadData('Covid3MC')
 clx = classix.CLASSIX(radius=0.2, minPts=500, verbose=0)
 clx.fit(data)
-clx.explain(plot=True)
+clx.explain(data, plot=True)
 ```
 
 You can also cluster out-of-sample data using ``predict()`` after the model is fitted, e.g., `clx.predict(data.iloc[:1000])` 
@@ -84,7 +84,7 @@ You can also cluster out-of-sample data using ``predict()`` after the model is f
 CLASSIX is an *explainable* clustering method. To get an overview of the computed clusters, type:
 
 ```Python
-clx.explain()
+clx.explain(data)
 ```
 Output:
 ```
@@ -100,7 +100,7 @@ These 301 groups were subsequently merged into 25 clusters.
 We can ask CLASSIX why two data points ended up in the same cluster, or not: 
 
 ```Python
-clx.explain('hCoV-19/Norway/6348/2021', 'hCoV-19/USA/WY-WYPHL-20146677/2020', plot=True) 
+clx.explain(data, 'hCoV-19/Norway/6348/2021', 'hCoV-19/USA/WY-WYPHL-20146677/2020', plot=True) 
 ```
 Output:
 ```
@@ -155,7 +155,7 @@ X = pd.DataFrame(X, index=['Anna', 'Bert', 'Carl', 'Tom', 'Bob'])
 
 clx = CLASSIX(radius=0.6)
 clx.fit_transform(X)
-clx.explain(index1='Carl', index2='Bert', plot=True, showallgroups=True, sp_fontsize=12)
+clx.explain(X, index1='Carl', index2='Bert', plot=True, showallgroups=True, sp_fontsize=12)
 ```
 Output:
 ```

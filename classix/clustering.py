@@ -556,62 +556,61 @@ class CLASSIX:
         if self.metric == 'euclidean':
             if self.sorting == "norm-mean":
                 self.mu_ = data.mean(axis=0)
-                self.data = data - self.mu_
-                self.dataScale_ = self.data.std()
+                data = data - self.mu_
+                self.dataScale_ = data.std()
                 if self.dataScale_ == 0: # prevent zero-division
                     self.dataScale_ = 1
-                self.data = self.data / self.dataScale_
+                data = data / self.dataScale_
             
             elif self.sorting == "pca":
                 self.mu_ = data.mean(axis=0)
-                self.data = data - self.mu_ # mean center
-                rds = norm(self.data, axis=1) # distance of each data point from 0
+                data = data - self.mu_ # mean center
+                rds = norm(data, axis=1) # distance of each data point from 0
                 self.dataScale_ = np.median(rds) # 50% of data points are within that radius
                 if self.dataScale_ == 0: # prevent zero-division
                     self.dataScale_ = 1
-                self.data = self.data / self.dataScale_ # now 50% of data are in unit ball 
+                data = data / self.dataScale_ # now 50% of data are in unit ball 
                 
             elif self.sorting == "norm-orthant":
                 self.mu_ = data.min(axis=0)
-                self.data = data - self.mu_
-                self.dataScale_ = self.data.std()
+                data = data - self.mu_
+                self.dataScale_ = data.std()
                 if self.dataScale_ == 0: # prevent zero-division
                     self.dataScale_ = 1
-                self.data = self.data / self.dataScale_
+                data = data / self.dataScale_
                 
             else:
                 self.mu_, self.dataScale_ = 0, 1 # no preprocessing
-                self.data = (data - self.mu_) / self.dataScale_
+                data = (data - self.mu_) / self.dataScale_
 
         elif self.metric == 'manhattan':
             # Manhattan 專屬預處理（移到正象限 + sum 標準化）
             self.mu_ = data.min(0)
-            self.data = data - self.mu_
-            sort_vals = np.sum(self.data, axis=1)
+            data = data - self.mu_
+            sort_vals = np.sum(data, axis=1)
             mext = np.median(sort_vals) or 1.0
-            self.data /= mext
-            self.dataScale_ = mext  # 可以視為 scale
+            data /= mext
+            dataScale_ = mext  # 可以視為 scale
             sort_vals /= mext
             
         elif self.metric == 'tanimoto':
             # Tanimoto 無需任何預處理（數據應非負）
             self.mu_ = np.zeros(data.shape[1])  # 佔位
             self.dataScale_ = 1.0
-            self.data = data
 
         self.t1_prepare = time() - self.t1_prepare
         self.t2_aggregate = time()
         # aggregation
         
         if self.metric == 'euclidean':
-            self.groups_, self.splist_, self.nrDistComp_, self.ind, sort_vals, self.data, self.__half_nrm2 = self._aggregate(
-                                                                                    data=self.data,
+            self.groups_, self.splist_, self.nrDistComp_, self.ind, sort_vals, data, self.__half_nrm2 = self._aggregate(
+                                                                                    data=data,
                                                                                     sorting=self.sorting, 
                                                                                     tol=self.radius
                                                                                 ) 
             
             if self.__half_nrm2 is None: # the self.aggregate will return None if certain strategy is applied.
-                self.__half_nrm2 = np.einsum('ij,ij->i', self.data, self.data) * 0.5
+                self.__half_nrm2 = np.einsum('ij,ij->i', data, data) * 0.5
 
         elif self.metric == 'tanimoto':
             # Tanimoto 聚合
@@ -624,13 +623,13 @@ class CLASSIX:
                 from .aggregate_td import aggregate_tanimoto
                 warnings.warn("aggregation_td module is required for tanimoto metric, roll back to Python version.")
         
-            agg_res = aggregate_tanimoto(self.data, self.radius, verbose=self.__verbose > 0)
+            agg_res = aggregate_tanimoto(data, self.radius, verbose=self.__verbose > 0)
             self.groups_ = agg_res['labels']
             self.splist_ = agg_res['splist']
             self.nrDistComp_ = agg_res['nr_dist']
             self.ind = agg_res['ind']
             sort_vals = agg_res['sort_vals']
-            self.data = agg_res['data_sorted']
+            data = agg_res['data_sorted']
             self.group_sizes_ = agg_res['group_sizes']
 
         elif self.metric == 'manhattan':
@@ -645,13 +644,13 @@ class CLASSIX:
                 from .aggregate_md import aggregate_manhattan
                 warnings.warn("aggregation_md module is required for manhattan metric, roll back to Python version.")
 
-            agg_res = aggregate_manhattan(self.data, self.radius, verbose=self.__verbose > 0)
+            agg_res = aggregate_manhattan(data, self.radius, verbose=self.__verbose > 0)
             self.groups_ = agg_res['labels']
             self.splist_ = agg_res['splist']
             self.nrDistComp_ = agg_res['nr_dist']
             self.ind = agg_res['ind']
             sort_vals = agg_res['sort_vals']
-            self.data = agg_res['data_sorted']          # this is sorted 
+            data = agg_res['data_sorted']          # this is sorted 
             self.group_sizes_ = agg_res['group_sizes']  # new property for manhattan
             
 
@@ -670,7 +669,7 @@ class CLASSIX:
         else:
             if self.metric == 'euclidean':
                 self.labels_ = self.merging(
-                    data=self.data,
+                    data=data,
                     agg_labels=self.groups_, 
                     splist=self.splist_,  
                     ind=self.ind, sort_vals=sort_vals, 
@@ -678,6 +677,11 @@ class CLASSIX:
                     method=self.group_merging, 
                     minPts=self.minPts
                 ) 
+                
+                if self.__verbose:
+                    print(f"Euclidean merging completed: {len(np.unique(self.labels_))} clusters")
+
+                self.sp_data_pts = data[self.splist_[:, 0].astype(int),:]
                 
             elif self.metric == 'manhattan':
                 try:
@@ -687,7 +691,7 @@ class CLASSIX:
                     warnings.warn("merge_md module is required for manhattan metric, roll back to Python version.")
                 
                 merge_result = merge_manhattan(
-                    spdata=self.data[self.splist_,:],
+                    spdata=data[self.splist_,:],
                     group_sizes=self.group_sizes_,                    
                     sort_vals_sp=sort_vals[self.splist_],
                     agg_labels_sp=np.arange(len(self.splist_)),
@@ -706,6 +710,8 @@ class CLASSIX:
                 if self.__verbose:
                     print(f"Manhattan merging completed: {len(np.unique(self.labels_))} clusters")
 
+                self.sp_data_pts = data[self.splist_,:]
+
             elif self.metric == 'tanimoto':
                 try:
                     from .merge_td_cm import merge_tanimoto
@@ -714,7 +720,7 @@ class CLASSIX:
                     warnings.warn("merge_td module is required for tanimoto metric, roll back to Python version.")
                 
                 merge_result = merge_tanimoto(
-                    spdata=self.data[self.splist_,:],
+                    spdata=data[self.splist_,:],
                     group_sizes=self.group_sizes_,
                     sort_vals_sp=sort_vals[self.splist_],
                     agg_labels_sp=np.arange(len(self.splist_)),
@@ -732,6 +738,8 @@ class CLASSIX:
                 self.Adj = merge_result['Adj']
                 if self.__verbose:
                     print(f"Tanimoto merging completed: {len(np.unique(self.labels_))} clusters")
+
+                self.sp_data_pts = data[self.splist_,:]
 
         self.t3_merge = time() - self.t3_merge
         
@@ -797,8 +805,7 @@ class CLASSIX:
         if self.metric == 'euclidean':
             processed_data = self.preprocessing(data)
             # Euclidean splist_ is 2D, use first column
-            sp_indices = self.splist_[:, 0].astype(int)
-            group_centers = self.data[sp_indices]
+            group_centers = self.sp_data_pts  # precomputed during fit
             dists = distance.cdist(group_centers, processed_data, metric='euclidean')
         
         elif self.metric == 'manhattan':
@@ -810,14 +817,14 @@ class CLASSIX:
             processed_data /= mext_new
             
             # splist_ is 1D for manhattan
-            group_centers = self.data[self.splist_]
+            group_centers = self.sp_data_pts
             dists = distance.cdist(group_centers, processed_data, metric='cityblock')
         
         elif self.metric == 'tanimoto':
             # No preprocessing for tanimoto
             processed_data = data
             
-            group_centers_dense = self.data[self.splist_]
+            group_centers_dense = self.sp_data_pts
             group_centers_sparse = sparse.csr_matrix(group_centers_dense)
             new_data_sparse = sparse.csr_matrix(processed_data)
             
@@ -1001,7 +1008,7 @@ class CLASSIX:
     
     
     
-    def explain(self, index1=None, index2=None, cmap='jet', showalldata=False, showallgroups=False, showsplist=False, max_colwidth=None, replace_name=None, 
+    def explain(self, data, index1=None, index2=None, cmap='jet', showalldata=False, showallgroups=False, showsplist=False, max_colwidth=None, replace_name=None, 
                 plot=False, figsize=(10, 7), figstyle="default", savefig=False, bcolor="#f5f9f9", obj_color="k", width=1.5,  obj_msize=160, sp1_color='lime', sp2_color='cyan',
                 sp_fcolor="tomato", sp_marker="+", sp_size=72, sp_mcolor="k", sp_alpha=0.05, sp_pad=0.5, sp_fontsize=10, sp_bbox=None, sp_cmarker="+", sp_csize=110, 
                 sp_ccolor="crimson", sp_clinewidths=2.7,  dp_fcolor="white", dp_alpha=0.5, dp_pad=2, dp_fontsize=10, dp_bbox=None,  show_all_grp_circle=False,
@@ -1216,7 +1223,6 @@ class CLASSIX:
         else:
             raise NotFittedError("Please use .fit() method first.")
             
-        data = self.data[self.inverse_ind]
         data_size = data.shape[0]
         feat_dim = data.shape[1]
 
@@ -1229,15 +1235,15 @@ class CLASSIX:
                 
             elif feat_dim == 2:
                 self.x_pca = data.copy()
-                self.s_pca = self.data[self.splist_[:, 0]] 
+                self.s_pca = self.sp_data_pts
 
             else: # when data is one-dimensional, no PCA transform
                 self.x_pca = np.ones((len(data.copy()), 2))
                 self.x_pca[:, 0] = data[:, 0]
                 self.s_pca = np.ones((len(self.splist_), 2))
-                self.s_pca[:, 0] = self.data[self.splist_[:, 0]].reshape(-1) 
+                self.s_pca[:, 0] = self.sp_data_pts[:, 0].reshape(-1) 
                 
-            self.form_starting_point_clusters_table(data=self.data)
+            self.form_starting_point_clusters_table(data=data[self.ind])
             
         if index1 is None and index2 is not None:
             raise ValueError("Please enter a valid value for index1.")
@@ -1517,7 +1523,7 @@ class CLASSIX:
                 else:
                     from scipy.sparse import csr_matrix
                     
-                    distm = pairwise_distances(self.data[self.splist_[:, 0]])
+                    distm = pairwise_distances(self.sp_data_pts)
                     distmf = (distm <= self.radius*self.mergeScale_).astype(int)
                     csr_dist_m = csr_matrix(distmf)
                         
@@ -1979,7 +1985,7 @@ class CLASSIX:
             connected_paths.reverse()
                 
         else:
-            distm = pairwise_distances(self.data[self.splist_[:, 0]])
+            distm = pairwise_distances(self.sp_data_pts)
             distm = (distm <= self.radius*self.mergeScale_).astype(int)
             csr_dist_m = csr_matrix(distm)
             connected_paths = find_shortest_dist_path(agg_label1, csr_dist_m, agg_label2, unweighted=not include_dist)
@@ -2038,7 +2044,7 @@ class CLASSIX:
         
         
     
-    def visualize_linkage(self, scale=1.5, figsize=(10,7), labelsize=24, markersize=320, plot_boundary=False, bound_color='red', path='.', fmt='pdf'):
+    def visualize_linkage(self, data, scale=1.5, figsize=(10,7), labelsize=24, markersize=320, plot_boundary=False, bound_color='red', path='.', fmt='pdf'):
         
         """Visualize the linkage in the distance clustering.
         
@@ -2074,16 +2080,16 @@ class CLASSIX:
         if not hasattr(self, '__fit__'):
             raise NotFittedError("Please use .fit() method first.")
             
-        distm, n_components, labels = visualize_connections(self.data, self.splist_, radius=self.radius, scale=round(scale,2))
+        distm, n_components, labels = visualize_connections(data[self.ind], self.splist_, radius=self.radius, scale=round(scale,2))
         plt.rcParams['axes.facecolor'] = 'white'
 
-        P = self.data[self.splist_[:, 0].astype(int)]
+        P = self.sp_data_pts
         link_list = return_csr_matrix_indices(csr_matrix(distm))
         
         fig, ax = plt.subplots(figsize=figsize)
         for i in range(self.splist_.shape[0]):
             ax.scatter(P[i,0], P[i,1], s=markersize, c='k', marker='.')
-            if plot_boundary and self.data.shape[1] <= 2:
+            if plot_boundary and data.shape[1] <= 2:
                 ax.add_patch(plt.Circle((P[i, 0], P[i, 1]), self.radius, 
                                         color=bound_color, fill=False, clip_on=False)
                             )
@@ -2144,28 +2150,28 @@ class CLASSIX:
 
 
     
-    def load_group_centers(self):
+    def load_group_centers(self, data):
         """Load group centers."""
         
         if not hasattr(self, '__fit__'):
             raise NotFittedError("Please use .fit() method first.")
             
         if not hasattr(self, 'grp_centers'):
-            self.grp_centers = calculate_cluster_centers(self.data, self.groups_)
+            self.grp_centers = calculate_cluster_centers(data, self.groups_)
             return self.grp_centers
         else:
             return self.grp_centers
         
         
 
-    def load_cluster_centers(self):
+    def load_cluster_centers(self, data):
         """Load cluster centers."""
             
         if not hasattr(self, '__fit__'):
             raise NotFittedError("Please use .fit() method first.")
             
         if not hasattr(self, 'centers'):
-            self.centers = calculate_cluster_centers(self.data[self.inverse_ind], self.labels_)
+            self.centers = calculate_cluster_centers(data, self.labels_)
             return self.centers
         else:
             return self.centers
