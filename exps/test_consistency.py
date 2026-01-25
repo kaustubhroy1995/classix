@@ -2,13 +2,12 @@ import numpy as np
 from sklearn.datasets import make_blobs, make_moons, make_circles
 import matplotlib.pyplot as plt
 
-# Assume the files are in the same directory or importable path
-from classix import CLASSIX          # Merged version (supports multiple metrics)
+from classix import CLASSIX        
 from classix_tm.classix_m import CLASSIX_M      # Original pure Manhattan version
 from classix_tm.classix_t import CLASSIX_T      # Original pure Tanimoto version
 
 import classix
-classix.__enable_cython__ = True  # Disable Cython optimizations for testing consistency
+classix.__enable_cython__ = False  # Disable/Enable Cython optimizations for testing consistency
 
 def compare_labels(labels1, labels2, name=""):
     """Compare two label arrays for consistency (ignore label numbering, only check partitioning)"""
@@ -112,7 +111,8 @@ def run_test(X, metric='manhattan', radius=0.5, minPts=3, mergeScale=1.5, mergeT
     
     return consistent
 
-# ===================================================================
+
+
 # Generate test datasets
 # ===================================================================
 np.random.seed(42)
@@ -127,10 +127,8 @@ X_moon, _ = make_moons(n_samples=600, noise=0.08, random_state=42)
 X_circle, _ = make_circles(n_samples=700, noise=0.07, factor=0.4, random_state=42)
 X_circle += np.random.normal(0, 0.5, X_circle.shape) * 0.3  # Add some noise
 
-# ===================================================================
 # Run tests
 # ===================================================================
-
 # Manhattan consistency tests
 print("Test 1: Blob data (Manhattan)")
 run_test(X_blob, metric='manhattan', radius=0.3, minPts=4, mergeScale=1)
