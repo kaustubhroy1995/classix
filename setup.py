@@ -36,7 +36,7 @@ ext_modules = [
 
     Extension("classix.merge_td_cm", ["classix/merge_td_cm.pyx"], extra_compile_args=c_args),
 
-    Extension("spmv", ["classix/spmv.pyx"], extra_compile_args=c_args),
+    Extension("spmv", ["classix/spmv.c"], extra_compile_args=c_args),
 ]
 
 
@@ -48,3 +48,4 @@ setup(
     ),
     cmdclass={"build_ext": CustomBuildExt},
 )
+
