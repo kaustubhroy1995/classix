@@ -446,6 +446,8 @@ class CLASSIX:
     ----------
     [1] X. Chen and S. Güttel. Fast and explainable clustering based on sorting, 
         https://arxiv.org/abs/2202.01456, 2022.
+    [2] S. Güttel and K. Roy. Fast and explainable clustering in the Manhattan and Tanimoto distance,
+        https://arxiv.org/abs/2601.08781, 2026.
     """
         
     def __init__(self, sorting="pca", metric='euclidean', radius=0.5, minPts=1, group_merging="distance", mergeScale=1.5, 
@@ -2434,6 +2436,7 @@ def return_csr_matrix_indices(csr_mat):
 
 def euclid(xxt, X, v):
     return (xxt + np.inner(v,v).ravel() -2*X.dot(v)).astype(float)
+
 
 
 
