@@ -118,7 +118,7 @@ There are three usage modes:
 | **Pandas support** | Supports DataFrame indices and `replace_name` for readable labels | Not supported |
 | **Group details** | Shows group center coordinates, point counts, and cluster membership table | Not shown |
 | **Path algorithm** | Uses shortest-distance path on a pairwise distance matrix | Uses BFS on the binary adjacency matrix |
-| **Path annotation** | Distinguishes normal merges (`→`) from minPts reallocations (`(minPts) →`) | Same annotation style |
+| **Path annotation** | Does not annotate edge types; prints a separate message when no direct path exists due to minPts reassignment | Annotates each edge as `->` (distance merge) or `(minPts) ->` (redistribution), providing per-edge detail |
 | **Customization** | Extensive: colors, markers, sizes, fonts, backgrounds, arrow styles, etc. | None |
 
 ### Why This Matters
