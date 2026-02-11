@@ -1529,7 +1529,10 @@ class CLASSIX:
                     connected_paths = [agg_label1]
                 else:
                     if self.metric in ('manhattan', 'tanimoto') and hasattr(self, 'Adj'):
-                        from .merge_md import bfs_shortest_path
+                        if self.metric == 'manhattan':
+                            from .merge_md import bfs_shortest_path
+                        else:
+                            from .merge_td import bfs_shortest_path
                         
                         distm = pairwise_distances(self.sp_data_pts)
                         

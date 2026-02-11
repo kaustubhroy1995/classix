@@ -151,14 +151,14 @@ def bfs_shortest_path(adj_matrix, start, goal):
         List of node indices forming the shortest path, or None if no path exists.
     """
     queue = deque([(start, [start])])
-    visited = set()
+    visited = {start}
     
     while queue:
         current_node, path = queue.popleft()
         if current_node == goal:
             return path
-        visited.add(current_node)
         for neighbor, connected in enumerate(adj_matrix[current_node]):
             if connected and neighbor not in visited:
+                visited.add(neighbor)
                 queue.append((neighbor, path + [neighbor]))
     return None
