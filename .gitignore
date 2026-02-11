@@ -3,3 +3,5 @@ __pycache__/
 *.so
 *.egg-info/
 linkage_*.pdf
+*.svg
+*.pdf
