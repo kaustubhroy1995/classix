@@ -249,7 +249,7 @@ class CLASSIX_T:
         self.group_centers = self.splist
         return self
 
-def explain(self, ind1=None, ind2=None):
+    def explain(self, ind1=None, ind2=None):
         if ind1 is None and ind2 is None:
             # If there are no specific points to explain, print the general information
             print(f"The data was clustered into {len(self.group_labels)} groups. These were further merged into {len(np.unique(self.group_labels))} clusters.")
