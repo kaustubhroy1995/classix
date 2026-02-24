@@ -1,0 +1,83 @@
+name: Build Windows Wheels
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    permissions:
+      contents: read
+    strategy:
+      matrix:
+        python-version: ['3.9', '3.10', '3.11', '3.12']
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install setuptools wheel cython "numpy>=1.22"
+
+      - name: Build wheel
+        run: |
+          python setup.py bdist_wheel
+
+      - name: Copy wheel to precompiled_wheels
+        shell: bash
+        run: |
+          mkdir -p precompiled_wheels
+          cp dist/*.whl precompiled_wheels/
+
+      - name: Test wheel installation in fresh environment
+        shell: bash
+        run: |
+          python -m venv test_env
+          source test_env/Scripts/activate
+          pip install dist/*.whl
+          python -c "from classix import CLASSIX; print('CLASSIX imported successfully')"
+          python -c "from classix.clustering import cython_is_available; cython_is_available(verbose=1)"
+          deactivate
+
+      - name: Upload wheel artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheel-win-py${{ matrix.python-version }}
+          path: precompiled_wheels/*.whl
+
+  commit-wheels:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all wheel artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: precompiled_wheels
+          pattern: wheel-win-*
+          merge-multiple: true
+
+      - name: Commit wheels to repository
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add precompiled_wheels/*.whl
+          if git diff --cached --quiet; then
+            echo "No new wheels to commit"
+          else
+            git commit -m "Update precompiled Windows wheels"
+            git push
+          fi
